@@ -20,3 +20,11 @@ app.get('/health', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+
+const pool = require('./db');
+
+// Test DB connection on startup
+pool.query('SELECT NOW()', (err, res) => {
+    if (err) console.error('Database connection failed:', err.message);
+    else     console.log('Database connected at:', res.rows[0].now);
+});
