@@ -1,3 +1,7 @@
+/**
+ * Run with: npm run seed:usda
+ */
+
 require('dotenv').config();
 const fetch = require('node-fetch');
 const { default: PQueue } = require('p-queue');
@@ -8,16 +12,16 @@ const BASE_URL = 'https://api.nal.usda.gov/fdc/v1';
 
 // List of natural compounds
 const SEARCH_TERMS = [
-    'turmeric', 'ginger', 'echinacea', 'valerian', 'chamomile',
-    'peppermint', 'lavender', 'garlic', 'ginseng', 'ashwagandha',
-    'elderberry', 'St Johns Wort', 'melatonin', 'magnesium', 'zinc', 'vitamin D', 'vitamin C', 'omega 3', 'probiotics', 'licorice root', 'milk thistle', 'saw palmetto', 'black cohosh', 'ginkgo biloba', 'passionflower', 'lemon balm', 'holy basil', 'rhodiola', 'maca root', 'evening primrose', 'boswellia', 'devil claw', 'cats claw', 'feverfew','hawthorn', 'dandelion', 'nettle', 'marshmallow root', 'slippery elm', 'aloe vera', 'calendula', 'arnica', 'oregano oil', 'tea tree', 'berberine', 'quercetin', 'resveratrol', 'coenzyme Q10', 'NAC', 'lions mane', 'reishi', 'chaga'
+  'turmeric', 'ginger', 'garlic', 'chamomile', 'peppermint',
+  'elderberry', 'dandelion', 'nettle', 'aloe vera', 'oregano',
+  'lions mane mushroom', 'ginkgo nuts', 'basil'
 ];
 
 // Rate limiter to avoid hitting USDA's limit
 const queue = new PQueue({ concurrency: 3 });
 
 async function searchUSDA(term) {
-    const url = `${BASE_URL}/foods/search?query=${encodeURIComponent(term)}&api_key=${API_KEY}&pageSize=3&dataType=Foundation,SR%20Legacy`;
+    const url = `${BASE_URL}/foods/search?query=${encodeURIComponent(term)}&api_key=${API_KEY}&pageSize=5&dataType=Foundation,SR%20Legacy`;
 
     const res = await fetch(url);
     if (!res.ok) {
@@ -26,7 +30,13 @@ async function searchUSDA(term) {
     }
 
     const data = await res.json();
-    return data.foods || [];
+    const foods = data.foods || [];
+
+    const filtered = foods.filter(f => 
+        f.description.toLowerCase().includes(term.toLowerCase().split(' ')[0])
+    );
+
+    return filtered;
 }
 
 async function upsertCompound(food, searchTerm) {
