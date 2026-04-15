@@ -1,5 +1,7 @@
 /**
  * Run with: npm run seed:usda
+ * or
+ * Run with: npm run seed:manual
  */
 
 require('dotenv').config();
