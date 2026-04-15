@@ -1,3 +1,7 @@
+-------------------------------------------------------
+-- Add changes with: npm run migrate
+-------------------------------------------------------
+
 -- Compounds: Every herb, msupplement, or natural remedy
 CREATE TABLE IF NOT EXISTS compounds (
     id SERIAL PRIMARY KEY,
