@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "migrate": "node db/migrate.js",
-    "seed:usda": "node scripts/fetchUSDA.js"
+    "seed:usda": "node scripts/fetchUSDA.js",
+    "seed:manual": "node scripts/seedManual.js"
   },
   "keywords": [],
   "author": "",
