@@ -38,6 +38,12 @@ const MANUAL_COMPOUNDS = [
   { name: 'Chaga Mushroom', category: 'Antioxidant', description: 'A fungus used for immune support and antioxidant properties.', evidence_tier: 2, source_url: 'https://www.nccih.nih.gov/health/chaga' },
   { name: 'Saw Palmetto', category: 'Mens Health', description: 'A palm plant extract used for prostate health and hair loss.', evidence_tier: 2, source_url: 'https://www.nccih.nih.gov/health/saw-palmetto' },
   { name: 'Black Cohosh', category: 'Womens Health', description: 'An herb used for menopause symptoms including hot flashes.', evidence_tier: 2, source_url: 'https://www.nccih.nih.gov/health/black-cohosh' },
+  { name: 'Turmeric', category: 'Anti-inflammatory', description: 'A bright yellow spice with potent anti-inflammatory and antioxidant properties, used for joint pain, inflammation, and digestive health.', evidence_tier: 1, source_url: 'https://www.nccih.nih.gov/health/turmeric' },
+  { name: 'Holy Basil', category: 'Adaptogen', description: 'An adaptogenic herb used in Ayurvedic medicine for stress, anxiety, and blood sugar regulation.', evidence_tier: 2, source_url: 'https://www.nccih.nih.gov/health/holy-basil' },
+  { name: 'Slippery Elm', category: 'Digestive Health', description: 'A tree bark used to soothe irritated mucous membranes in the digestive tract.', evidence_tier: 2, source_url: 'https://www.nccih.nih.gov/health/slippery-elm' },
+  { name: 'Aloe Vera', category: 'Skin Health', description: 'A succulent plant used topically for skin conditions and internally for digestive support.', evidence_tier: 2, source_url: 'https://www.nccih.nih.gov/health/aloe-vera' },
+  { name: 'Bacopa', category: 'Cognitive Support', description: 'An Ayurvedic herb used to improve memory, focus, and cognitive function.', evidence_tier: 2, source_url: 'https://www.nccih.nih.gov/health/bacopa' },
+  { name: 'Evening Primrose', category: 'Womens Health', description: 'An oil used for menopause symptoms, PMS, and skin conditions.', evidence_tier: 2, source_url: 'https://www.nccih.nih.gov/health/evening-primrose-oil' },
 ];
 
 async function seedManual() {
