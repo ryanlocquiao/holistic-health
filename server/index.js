@@ -28,3 +28,9 @@ pool.query('SELECT NOW()', (err, res) => {
     if (err) console.error('Database connection failed:', err.message);
     else     console.log('Database connected at:', res.rows[0].now);
 });
+
+const searchRoutes = require('./routes/search');
+const compoundRoutes = require('./routes/compounds');
+
+app.use('/api/search', searchRoutes);
+app.use('/api/compounds', compoundRoutes);
