@@ -1,12 +1,31 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 
+/**
+ * Search results page.
+ *
+ * Responsibilities:
+ * - Read `q` from URL query params.
+ * - Request ranked compound results from the API.
+ * - Render loading, empty, error, and success states.
+ *
+ * Run locally:
+ * - API: cd server && npm start
+ * - UI:  cd client && npm run dev
+ *
+ * Manual test:
+ * - Open /search?q=insomnia and verify non-empty results.
+ * - Open /search?q=zzzz and verify empty state message.
+ * - Stop API and reload to verify error message handling.
+ */
+
 const TIER_LABEL = { 1: 'Tier 1', 2: 'Tier 2', 3: 'Tier 3' }
 const TIER_COLOR = {
     1: 'bg-green-100 text-green-800',
     2: 'bg-yellow-100 text-yellow-800',
     3: 'bg-gray-100 text-gray-600'
 }
+const DEFAULT_ERROR_MESSAGE = 'Something went wrong. Please try again.'
 
 export default function SearchResults() {
     const [searchParams] = useSearchParams()
@@ -14,36 +33,46 @@ export default function SearchResults() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const navigate = useNavigate()
-    const query = searchParams.get('q') || ''
+    const query = (searchParams.get('q') || '').trim()
 
     useEffect(() => {
+        setError(null)
+
         if (!query) {
+            setResults([])
             setLoading(false)
             return
         }
 
-        let cancelled = false
+        const abortController = new AbortController()
 
         async function runSearch() {
             try {
                 const res = await fetch(
-                    `${import.meta.env.VITE_API_URL}/api/search?q=${encodeURIComponent(query)}`
+                    `${import.meta.env.VITE_API_URL}/api/search?q=${encodeURIComponent(query)}`,
+                    { signal: abortController.signal }
                 )
+
+                if (!res.ok) {
+                    throw new Error(`Search request failed with status ${res.status}`)
+                }
+
                 const data = await res.json()
-                if (!cancelled) {
-                    setResults(Array.isArray(data) ? data : [])
-                    setLoading(false)
-                }
-            } catch {
-                if (!cancelled) {
-                    setError('Something went wrong. Please try again.')
-                    setLoading(false)
-                }
+                setResults(Array.isArray(data) ? data : [])
+                setLoading(false)
+            } catch (err) {
+                if (err.name === 'AbortError') return
+                setError(DEFAULT_ERROR_MESSAGE)
+                setLoading(false)
             }
         }
 
+        setLoading(true)
         runSearch()
-        return () => { cancelled = true }
+
+        return () => {
+            abortController.abort()
+        }
     }, [query])
 
     return (
@@ -69,10 +98,17 @@ export default function SearchResults() {
                 )}
 
                 <div className="flex flex-col gap-4">
-                    {results.map(compound => (
+                    {results.map((compound) => (
                         <div
                             key={compound.id}
                             onClick={() => navigate(`/remedy/${compound.id}`)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                    navigate(`/remedy/${compound.id}`)
+                                }
+                            }}
                             className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer hover:border-teal-400 hover:shadow-sm transition"
                         >
                             <div className="flex items-center justify-between mb-2">

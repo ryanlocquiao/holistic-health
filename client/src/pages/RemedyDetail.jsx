@@ -1,6 +1,23 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 
+/**
+ * Compound detail page.
+ *
+ * Responsibilities:
+ * - Read route param `id`.
+ * - Request a single compound by ID.
+ * - Render full detail content and associated ailments.
+ *
+ * Run locally:
+ * - API: cd server && npm start
+ * - UI:  cd client && npm run dev
+ *
+ * Manual test:
+ * - Visit /remedy/32 and verify content renders.
+ * - Visit /remedy/abc and verify user-friendly error messaging.
+ */
+
 const TIER_COLOR = {
     1: 'bg-green-100 text-green-800',
     2: 'bg-yellow-100 text-yellow-800',
@@ -13,6 +30,8 @@ const TIER_DESC = {
     3: 'Anecdotal / community data'
 }
 
+const DEFAULT_NOT_FOUND_MESSAGE = 'Compound not found.'
+
 export default function RemedyDetail() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -21,19 +40,37 @@ export default function RemedyDetail() {
     const [error, setError] = useState(null)
 
     useEffect(() => {
-        fetch(import.meta.env.VITE_API_URL + '/api/compounds/' + id)
-            .then(function(res) {
-                if (!res.ok) throw new Error('Not found')
-                return res.json()
-            })
-            .then(function(data) {
+        const abortController = new AbortController()
+
+        async function fetchCompound() {
+            try {
+                setError(null)
+                setLoading(true)
+
+                const res = await fetch(
+                    `${import.meta.env.VITE_API_URL}/api/compounds/${id}`,
+                    { signal: abortController.signal }
+                )
+
+                if (!res.ok) {
+                    throw new Error(`Compound fetch failed with status ${res.status}`)
+                }
+
+                const data = await res.json()
                 setCompound(data)
                 setLoading(false)
-            })
-            .catch(function() {
-                setError('Compound not found.')
+            } catch (err) {
+                if (err.name === 'AbortError') return
+                setError(DEFAULT_NOT_FOUND_MESSAGE)
                 setLoading(false)
-            })
+            }
+        }
+
+        fetchCompound()
+
+        return () => {
+            abortController.abort()
+        }
     }, [id])
 
     if (loading) {
@@ -56,7 +93,7 @@ export default function RemedyDetail() {
         <div className="min-h-screen bg-gray-50 px-4 py-10">
             <div className="max-w-2xl mx-auto">
                 <button
-                    onClick={function() { navigate(-1) }}
+                    onClick={() => navigate(-1)}
                     className="text-teal-600 text-sm mb-6 hover:underline"
                 >
                     Back to results
@@ -92,13 +129,11 @@ export default function RemedyDetail() {
                                 Addresses
                             </h2>
                             <div className="flex flex-wrap gap-2">
-                                {compound.ailments.map(function(a) {
-                                    return (
-                                        <span key={a.id} className="text-xs bg-teal-50 text-teal-700 px-3 py-1 rounded-full border border-teal-200">
-                                            {a.name}
-                                        </span>
-                                    )
-                                })}
+                                {compound.ailments.map((ailment) => (
+                                    <span key={ailment.id} className="text-xs bg-teal-50 text-teal-700 px-3 py-1 rounded-full border border-teal-200">
+                                        {ailment.name}
+                                    </span>
+                                ))}
                             </div>
                         </div>
                     )}

@@ -1,3 +1,15 @@
+/*
+  Global stylesheet entry for Tailwind layers.
+
+  How this works:
+  - `base` injects Tailwind reset and base tokens.
+  - `components` is reserved for reusable component classes.
+  - `utilities` provides utility-first classes used by JSX.
+
+  Run/test:
+  - `npm run dev` for local development styles.
+  - `npm run build` to verify production CSS generation.
+*/
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
