@@ -1,8 +1,10 @@
 -------------------------------------------------------
 -- Add changes with: npm run migrate
+-- Verify migration by checking table/index presence
+-- in your PostgreSQL client after execution.
 -------------------------------------------------------
 
--- Compounds: Every herb, msupplement, or natural remedy
+-- Compounds: Every herb, supplement, or natural remedy
 CREATE TABLE IF NOT EXISTS compounds (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
@@ -69,7 +71,7 @@ CREATE TABLE IF NOT EXISTS interactions (
     description TEXT
 );
 
--- Indexes
+-- Indexes for common lookups and join paths.
 CREATE INDEX IF NOT EXISTS idx_compounds_name ON compounds(name);
 CREATE INDEX IF NOT EXISTS idx_ailments_name ON ailments(name);
 CREATE INDEX IF NOT EXISTS idx_compound_ailments_compound ON compound_ailments(compound_id);

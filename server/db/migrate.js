@@ -2,14 +2,30 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const pool = require('./index');
-const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
 
-pool.query(sql).
-    then(() => {
+/**
+ * Applies the SQL schema to the configured PostgreSQL database.
+ *
+ * Run:
+ * - npm run migrate
+ *
+ * Verify:
+ * - Confirm successful terminal output.
+ * - Inspect tables in your DB client.
+ */
+async function runMigration() {
+    const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+
+    try {
+        await pool.query(sql);
         console.log('Migration successful - all tables created.');
-        process.exit(0);
-    })
-    .catch(err => {
+        process.exitCode = 0;
+    } catch (err) {
         console.error('Migration failed:', err.message);
-        process.exit(1);
-    });
+        process.exitCode = 1;
+    } finally {
+        await pool.end();
+    }
+}
+
+runMigration();

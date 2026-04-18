@@ -1,62 +1,89 @@
-function levenshtein(a, b) {
-    const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
+const MAX_FUZZY_DISTANCE = 2;
+const RESULT_LIMIT = 10;
 
-    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-    for (let i = 1; i <= b.length; i++) {
-        for (let j = 1; j <= a.length; j++) {
-            matrix[i][j] = b[i - 1] === a[j - 1] ? matrix[i - 1][j - 1] : Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1);
-        }
-    }
-
-    return matrix[b.length][a.length];
+function normalizeText(value) {
+    return String(value || '').toLowerCase().trim();
 }
 
-function scoreCompound(compound, ailments, query) {
-    const q = query.toLowerCase().trim();
-    let score = 0;
-    const name = (compound.name || '').toLowerCase();
-    const description = (compound.description || '').toLowerCase();
-    const category = (compound.category || '').toLowerCase();
-    const ailmentNames = ailments.map(a => a.toLowerCase());
+/**
+ * Computes Levenshtein distance using a two-row DP matrix.
+ * This keeps behavior the same while reducing memory usage.
+ */
+function levenshtein(a, b) {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
 
-    // Exact names should give the highest weight
-    if (name === q)            score += 10;
-    else if (name.includes(q)) score += 6;
-    else if (q.includes(name)) score += 4;
+    let prevRow = Array.from({ length: a.length + 1 }, (_, i) => i);
+    let currRow = new Array(a.length + 1);
 
-    // Fuzzy name match - levenshtein distance <= 2
-    const dist = levenshtein(q, name);
-    if (dist <= 2) score += (3 - dist);
+    for (let i = 1; i <= b.length; i += 1) {
+        currRow[0] = i;
 
-    // Ailment match
-    for (const ailment of ailmentNames) {
-        if (ailment === q) score += 8;
-        else if (ailment.includes(q) || q.includes(ailment)) score += 5;
-        else if (levenshtein(q, ailment) <= 2) score += 2;
+        for (let j = 1; j <= a.length; j += 1) {
+            const substitutionCost = b[i - 1] === a[j - 1] ? 0 : 1;
+            currRow[j] = Math.min(
+                prevRow[j] + 1,
+                currRow[j - 1] + 1,
+                prevRow[j - 1] + substitutionCost
+            );
+        }
+
+        [prevRow, currRow] = [currRow, prevRow];
     }
 
-    if (description.includes(q)) score += 3;
+    return prevRow[a.length];
+}
 
-    if (category.includes(q)) score += 2;
+function scoreCompound(compound, ailments, normalizedQuery) {
+    let score = 0;
+    const name = normalizeText(compound.name);
+    const description = normalizeText(compound.description);
+    const category = normalizeText(compound.category);
 
-    if (compound.evidence_tier === 1)      score += 3;
+    if (name) {
+        if (name === normalizedQuery) score += 10;
+        else if (name.includes(normalizedQuery)) score += 6;
+        else if (normalizedQuery.includes(name)) score += 4;
+
+        const dist = levenshtein(normalizedQuery, name);
+        if (dist <= MAX_FUZZY_DISTANCE) score += 3 - dist;
+    }
+
+    for (const ailmentName of ailments) {
+        const ailment = normalizeText(ailmentName);
+        if (!ailment) continue;
+
+        if (ailment === normalizedQuery) score += 8;
+        else if (ailment.includes(normalizedQuery) || normalizedQuery.includes(ailment)) score += 5;
+        else if (levenshtein(normalizedQuery, ailment) <= MAX_FUZZY_DISTANCE) score += 2;
+    }
+
+    if (description.includes(normalizedQuery)) score += 3;
+    if (category.includes(normalizedQuery)) score += 2;
+
+    if (compound.evidence_tier === 1) score += 3;
     else if (compound.evidence_tier === 2) score += 1.5;
 
     return score;
 }
 
+/**
+ * Scores all compounds against a free-text query and returns top matches.
+ */
 function searchCompounds(compounds, ailmentMap, query) {
-    if (!query || query.trim() === '') return [];
+    const normalizedQuery = normalizeText(query);
+    if (!normalizedQuery) return [];
 
-    const scored = compounds.map(compound => ({
-        ...compound,
-        score: scoreCompound(compound, ailmentMap[compound.id] || [], query)
-    }))
-    .filter(c => c.score > 0);
+    const scored = compounds
+        .map((compound) => ({
+            ...compound,
+            score: scoreCompound(compound, ailmentMap[compound.id] || [], normalizedQuery)
+        }))
+        .filter((compound) => compound.score > 0);
 
-    // Max-heap simulation - sort score by descending: take top 10
     scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, 10);
+    return scored.slice(0, RESULT_LIMIT);
 }
 
 module.exports = { searchCompounds };

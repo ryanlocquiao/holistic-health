@@ -1,7 +1,17 @@
 /**
- * This file is meant to serve as a helper to fetchUSDA in
- * manually seeding compounds instead of relying on the USDA API.
- * This is used in order to filter out bad or non-useful results.
+ * Manually seeds curated compounds into the `compounds` table.
+ *
+ * Why this script exists:
+ * - USDA ingestion can include noisy or overly broad records.
+ * - This list provides a stable, hand-selected baseline dataset.
+ *
+ * Run:
+ * - npm run seed:manual
+ *
+ * Verify:
+ * - Check terminal output for inserted/upserted rows.
+ * - Run a DB query like: SELECT COUNT(*) FROM compounds;
+ * - Optionally call GET /api/search?q=insomnia after seeding.
  */
 
 require('dotenv').config();
@@ -46,36 +56,41 @@ const MANUAL_COMPOUNDS = [
   { name: 'Evening Primrose', category: 'Womens Health', description: 'An oil used for menopause symptoms, PMS, and skin conditions.', evidence_tier: 2, source_url: 'https://www.nccih.nih.gov/health/evening-primrose-oil' },
 ];
 
+const UPSERT_COMPOUND_SQL = `
+    INSERT INTO compounds (name, category, description, evidence_tier, source_url)
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (name) DO UPDATE SET
+        category = EXCLUDED.category,
+        description = EXCLUDED.description,
+        evidence_tier = EXCLUDED.evidence_tier,
+        source_url = EXCLUDED.source_url
+    RETURNING id, name
+`;
+
 async function seedManual() {
     console.log(`Seeding ${MANUAL_COMPOUNDS.length} manual compounds...`);
 
-    for (const compound of MANUAL_COMPOUNDS) {
-        const query = `
-            INSERT INTO compounds (name, category, description, evidence_tier, source_url) VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (name) DO UPDATE SET
-                category = EXCLUDED.category,
-                description = EXCLUDED.description,
-                source_url = EXCLUDED.source_url
-            RETURNING id, name
-        `;
+    try {
+        for (const compound of MANUAL_COMPOUNDS) {
+            const result = await pool.query(UPSERT_COMPOUND_SQL, [
+                compound.name,
+                compound.category,
+                compound.description,
+                compound.evidence_tier,
+                compound.source_url
+            ]);
 
-        const result = await pool.query(query, [
-            compound.name,
-            compound.category,
-            compound.description,
-            compound.evidence_tier,
-            compound.source_url
-        ]);
-        
-        console.log(`Inserted: ${result.rows[0].name} (id: ${result.rows[0].id})`);
+            console.log(`Inserted: ${result.rows[0].name} (id: ${result.rows[0].id})`);
+        }
+
+        const count = await pool.query('SELECT COUNT(*) FROM compounds');
+        console.log(`Done - ${count.rows[0].count} total compounds in DB`);
+    } finally {
+        await pool.end();
     }
-
-    const count = await pool.query('SELECT COUNT(*) FROM compounds');
-    console.log(`Done - ${count.rows[0].count} total compounds in DB`);
-    await pool.end();
 }
 
-seedManual().catch(err => {
+seedManual().catch((err) => {
     console.error('Manual seed failed:', err.message);
     process.exit(1);
 });

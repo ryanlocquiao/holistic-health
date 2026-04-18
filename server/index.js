@@ -1,8 +1,24 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+
 const app = express();
 const PORT = process.env.PORT || 8080;
+const pool = require('./db');
+
+const searchRoutes = require('./routes/search');
+const compoundRoutes = require('./routes/compounds');
+
+/**
+ * Basic service setup.
+ *
+ * Run:
+ * - npm run dev (if configured) or npm start from server package.
+ *
+ * Verify:
+ * - GET /health returns { status: 'ok' }
+ * - API routes under /api/search and /api/compounds respond as expected.
+ */
 
 app.use(cors({
     origin: [
@@ -17,20 +33,20 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
-
-const pool = require('./db');
-
-// Test DB connection on startup
-pool.query('SELECT NOW()', (err, res) => {
-    if (err) console.error('Database connection failed:', err.message);
-    else     console.log('Database connected at:', res.rows[0].now);
-});
-
-const searchRoutes = require('./routes/search');
-const compoundRoutes = require('./routes/compounds');
-
 app.use('/api/search', searchRoutes);
 app.use('/api/compounds', compoundRoutes);
+
+// Test DB connection on startup
+async function testDbConnection() {
+    try {
+        const result = await pool.query('SELECT NOW()');
+        console.log('Database connected at:', result.rows[0].now);
+    } catch (err) {
+        console.error('Database connection failed:', err.message);
+    }
+}
+
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    testDbConnection();
+});
