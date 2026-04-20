@@ -35,37 +35,62 @@ function levenshtein(a, b) {
     return prevRow[a.length];
 }
 
+function getAllowedFuzzyDistance(query, target) {
+    const maxLength = Math.max(query.length, target.length);
+    if (maxLength <= 4) return 1;
+    if (maxLength <= 8) return 2;
+    return 2;
+}
+
+function isFuzzyMatch(query, target) {
+    if (!query || !target) return false;
+
+    const distance = levenshtein(query, target);
+    const allowedDistance = Math.min(MAX_FUZZY_DISTANCE, getAllowedFuzzyDistance(query, target));
+    const maxLength = Math.max(query.length, target.length);
+
+    // Guard against random strings matching only by absolute distance.
+    if (distance / maxLength > 0.3) return false;
+
+    return distance <= allowedDistance;
+}
+
 function scoreCompound(compound, ailments, normalizedQuery) {
-    let score = 0;
+    let textScore = 0;
+    let qualityScore = 0;
     const name = normalizeText(compound.name);
     const description = normalizeText(compound.description);
     const category = normalizeText(compound.category);
 
     if (name) {
-        if (name === normalizedQuery) score += 10;
-        else if (name.includes(normalizedQuery)) score += 6;
-        else if (normalizedQuery.includes(name)) score += 4;
+        if (name === normalizedQuery) textScore += 10;
+        else if (name.includes(normalizedQuery)) textScore += 6;
 
-        const dist = levenshtein(normalizedQuery, name);
-        if (dist <= MAX_FUZZY_DISTANCE) score += 3 - dist;
+        if (isFuzzyMatch(normalizedQuery, name)) {
+            const dist = levenshtein(normalizedQuery, name);
+            textScore += 3 - Math.min(dist, 2);
+        }
     }
 
     for (const ailmentName of ailments) {
         const ailment = normalizeText(ailmentName);
         if (!ailment) continue;
 
-        if (ailment === normalizedQuery) score += 8;
-        else if (ailment.includes(normalizedQuery) || normalizedQuery.includes(ailment)) score += 5;
-        else if (levenshtein(normalizedQuery, ailment) <= MAX_FUZZY_DISTANCE) score += 2;
+        if (ailment === normalizedQuery) textScore += 8;
+        else if (ailment.includes(normalizedQuery)) textScore += 5;
+        else if (isFuzzyMatch(normalizedQuery, ailment)) textScore += 2;
     }
 
-    if (description.includes(normalizedQuery)) score += 3;
-    if (category.includes(normalizedQuery)) score += 2;
+    if (description.includes(normalizedQuery)) textScore += 3;
+    if (category.includes(normalizedQuery)) textScore += 2;
 
-    if (compound.evidence_tier === 1) score += 3;
-    else if (compound.evidence_tier === 2) score += 1.5;
+    // Evidence tier should rank already-relevant matches, not create matches.
+    if (textScore > 0) {
+        if (compound.evidence_tier === 1) qualityScore += 3;
+        else if (compound.evidence_tier === 2) qualityScore += 1.5;
+    }
 
-    return score;
+    return textScore + qualityScore;
 }
 
 /**
