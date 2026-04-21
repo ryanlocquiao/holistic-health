@@ -94,6 +94,77 @@ holistic-health/
 - node-fetch
 - p-queue
 
+## Required Dependencies
+
+This project uses Node.js package dependencies in both the `server` and `client` apps.
+
+### Runtime Prerequisites
+
+- Node.js 18+ (recommended LTS)
+- npm 9+
+- PostgreSQL 14+ (or compatible managed PostgreSQL)
+
+### Backend Dependencies (`server/package.json`)
+
+- cors@^2.8.6
+- dotenv@^17.4.0
+- express@^5.2.1
+- node-fetch@^2.7.0
+- p-queue@^9.1.2
+- pg@^8.20.0
+
+Install backend dependencies:
+
+```bash
+cd server
+npm install
+```
+
+Install backend dependencies explicitly:
+
+```bash
+cd server
+npm install cors@^2.8.6 dotenv@^17.4.0 express@^5.2.1 node-fetch@^2.7.0 p-queue@^9.1.2 pg@^8.20.0
+```
+
+### Frontend Dependencies (`client/package.json`)
+
+Production dependencies:
+
+- react@^19.2.4
+- react-dom@^19.2.4
+- react-router-dom@^7.14.1
+
+Development dependencies:
+
+- @eslint/js@^9.39.4
+- @types/react@^19.2.14
+- @types/react-dom@^19.2.3
+- @vitejs/plugin-react@^6.0.1
+- autoprefixer@^10.4.27
+- eslint@^9.39.4
+- eslint-plugin-react-hooks@^7.0.1
+- eslint-plugin-react-refresh@^0.5.2
+- globals@^17.4.0
+- postcss@^8.5.8
+- tailwindcss@^3.4.19
+- vite@^8.0.1
+
+Install frontend dependencies:
+
+```bash
+cd client
+npm install
+```
+
+Install frontend dependencies explicitly:
+
+```bash
+cd client
+npm install react@^19.2.4 react-dom@^19.2.4 react-router-dom@^7.14.1
+npm install -D @eslint/js@^9.39.4 @types/react@^19.2.14 @types/react-dom@^19.2.3 @vitejs/plugin-react@^6.0.1 autoprefixer@^10.4.27 eslint@^9.39.4 eslint-plugin-react-hooks@^7.0.1 eslint-plugin-react-refresh@^0.5.2 globals@^17.4.0 postcss@^8.5.8 tailwindcss@^3.4.19 vite@^8.0.1
+```
+
 ## Data Model Overview
 
 Core entities in the relational schema:
