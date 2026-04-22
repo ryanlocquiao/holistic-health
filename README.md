@@ -131,9 +131,10 @@ npm install cors@^2.8.6 dotenv@^17.4.0 express@^5.2.1 node-fetch@^2.7.0 p-queue@
 
 Production dependencies:
 
-- react@^19.2.4
-- react-dom@^19.2.4
-- react-router-dom@^7.14.1
+- lucide-react@^1.8.0
+- react@^19.2.5
+- react-dom@^19.2.5
+- react-router-dom@^7.14.2
 
 Development dependencies:
 
@@ -161,8 +162,8 @@ Install frontend dependencies explicitly:
 
 ```bash
 cd client
-npm install react@^19.2.4 react-dom@^19.2.4 react-router-dom@^7.14.1
-npm install -D @eslint/js@^9.39.4 @types/react@^19.2.14 @types/react-dom@^19.2.3 @vitejs/plugin-react@^6.0.1 autoprefixer@^10.4.27 eslint@^9.39.4 eslint-plugin-react-hooks@^7.0.1 eslint-plugin-react-refresh@^0.5.2 globals@^17.4.0 postcss@^8.5.8 tailwindcss@^3.4.19 vite@^8.0.1
+npm install lucide-react@^1.8.0 react@^19.2.5 react-dom@^19.2.5 react-router-dom@^7.14.2
+npm install -D @eslint/js@^9.39.4 @types/react@^19.2.14 @types/react-dom@^19.2.3 @vitejs/plugin-react@^6.0.1 autoprefixer@^10.5.0 eslint@^9.39.4 eslint-plugin-react-hooks@^7.1.1 eslint-plugin-react-refresh@^0.5.2 globals@^17.5.0 postcss@^8.5.10 tailwindcss@^3.4.19 vite@^8.0.9
 ```
 
 ## Data Model Overview
