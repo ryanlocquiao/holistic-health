@@ -55,9 +55,11 @@ async function searchUSDA(term) {
     const data = await res.json();
     const foods = data.foods || [];
 
-    const filtered = foods.filter(f => 
-        f.description.toLowerCase().includes(term.toLowerCase().split(' ')[0])
-    );
+    const searchToken = term.toLowerCase().split(' ')[0];
+    const filtered = foods.filter((food) => {
+        const description = String(food.description || '').toLowerCase();
+        return description.includes(searchToken);
+    });
 
     return filtered;
 }
@@ -80,7 +82,7 @@ async function upsertCompound(food, searchTerm) {
 
 async function fetchUSDA() {
     if (!API_KEY) {
-        throw new Error('USDA_API_KEY is missing.');
+        throw new Error('USDA_API_KEY is missing. Add it to your environment before running this seed script.');
     }
 
     console.log(`[${new Date().toISOString()}] Starting USDA pipeline - ${SEARCH_TERMS.length} terms`);
