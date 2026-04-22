@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import Nav from '../components/Nav'
 
 /**
  * Compound detail page.
@@ -31,6 +32,10 @@ const TIER_DESC = {
 }
 
 const DEFAULT_NOT_FOUND_MESSAGE = 'Compound not found.'
+
+function getEvidenceTier(compound) {
+    return compound?.evidence_tier ?? 3
+}
 
 export default function RemedyDetail() {
     const { id } = useParams()
@@ -75,8 +80,14 @@ export default function RemedyDetail() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <p className="text-gray-500">Loading...</p>
+            <div className="min-h-screen bg-gray-50">
+                <Nav />
+                <div className="flex items-center justify-center h-96">
+                    <div className="text-center">
+                        <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                        <p className="text-gray-500 text-sm">Searching compounds...</p>
+                    </div>
+                </div>
             </div>
         )
     }
@@ -89,14 +100,26 @@ export default function RemedyDetail() {
         )
     }
 
+    if (!compound) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <p className="text-gray-500">No compound data available.</p>
+            </div>
+        )
+    }
+
+    const evidenceTier = getEvidenceTier(compound)
+
     return (
         <div className="min-h-screen bg-gray-50 px-4 py-10">
+            <Nav />
             <div className="max-w-2xl mx-auto">
                 <button
                     onClick={() => navigate(-1)}
+                    type="button"
                     className="text-teal-600 text-sm mb-6 hover:underline"
                 >
-                    Back to results
+                    ← Back to results
                 </button>
 
                 <div className="bg-white rounded-2xl border border-gray-200 p-8">
@@ -105,8 +128,8 @@ export default function RemedyDetail() {
                         <h1 className="text-3xl font-bold text-gray-900">
                             {compound.name}
                         </h1>
-                        <span className={'text-xs font-medium px-3 py-1 rounded-full ' + (TIER_COLOR[compound.evidence_tier] || TIER_COLOR[3])}>
-                            Tier {compound.evidence_tier}
+                        <span className={'text-xs font-medium px-3 py-1 rounded-full ' + (TIER_COLOR[evidenceTier] || TIER_COLOR[3])}>
+                            Tier {evidenceTier}
                         </span>
                     </div>
 
@@ -143,7 +166,7 @@ export default function RemedyDetail() {
                             Evidence level
                         </h2>
                         <p className="text-gray-700 text-sm">
-                            {TIER_DESC[compound.evidence_tier]}
+                            {TIER_DESC[evidenceTier]}
                         </p>
                     </div>
 

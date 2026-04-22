@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import Nav from '../components/Nav'
 
 /**
  * Search results page.
@@ -26,6 +27,13 @@ const TIER_COLOR = {
     3: 'bg-gray-100 text-gray-600'
 }
 const DEFAULT_ERROR_MESSAGE = 'Something went wrong. Please try again.'
+const SORT_OPTIONS = ['relevance', 'tier', 'alpha']
+
+function getSortLabel(sortOption) {
+    if (sortOption === 'tier') return 'Evidence tier'
+    if (sortOption === 'alpha') return 'A-Z'
+    return 'Relevance'
+}
 
 export default function SearchResults() {
     const [searchParams] = useSearchParams()
@@ -35,8 +43,16 @@ export default function SearchResults() {
     const navigate = useNavigate()
     const query = (searchParams.get('q') || '').trim()
 
+    const [sortBy, setSortBy] = useState('relevance')
+    const sortedResults = [...results].sort((a, b) => {
+        if (sortBy === 'tier') return a.evidence_tier - b.evidence_tier
+        if (sortBy === 'alpha') return a.name.localeCompare(b.name)
+        return (b.score || 0) - (a.score || 0)
+    })
+
     useEffect(() => {
         setError(null)
+        setSortBy('relevance')
 
         if (!query) {
             setResults([])
@@ -77,9 +93,11 @@ export default function SearchResults() {
 
     return (
         <div className="min-h-screen bg-gray-50 px-4 py-10">
+            <Nav />
             <div className="max-w-2xl mx-auto">
                 <button
                     onClick={() => navigate('/')}
+                    type="button"
                     className="text-teal-600 text-sm mb-6 hover:underline"
                 >
                     ← Back to search
@@ -91,6 +109,20 @@ export default function SearchResults() {
                     {loading ? 'Searching...' : `${results.length} compounds found`}
                 </p>
 
+                <div className="flex gap-2 mb-6">
+                    {SORT_OPTIONS.map((option) => (
+                        <button
+                            key={option}
+                            type="button"
+                            onClick={() => setSortBy(option)}
+                            aria-pressed={sortBy === option}
+                            className={`text-xs px-3 py-1.5 rounded-full border transition ${sortBy === option ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-600 border-gray-300 hover:border-teal-400'}`}
+                        >
+                            {getSortLabel(option)}
+                        </button>
+                    ))}
+                </div>
+
                 {error && <p className="text-red-500">{error}</p>}
 
                 {!loading && results.length === 0 && !error && (
@@ -98,7 +130,7 @@ export default function SearchResults() {
                 )}
 
                 <div className="flex flex-col gap-4">
-                    {results.map((compound) => (
+                    {sortedResults.map((compound) => (
                         <div
                             key={compound.id}
                             onClick={() => navigate(`/remedy/${compound.id}`)}
@@ -109,6 +141,7 @@ export default function SearchResults() {
                                     navigate(`/remedy/${compound.id}`)
                                 }
                             }}
+                            aria-label={`Open details for ${compound.name}`}
                             className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer hover:border-teal-400 hover:shadow-sm transition"
                         >
                             <div className="flex items-center justify-between mb-2">
