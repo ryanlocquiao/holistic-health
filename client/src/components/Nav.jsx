@@ -28,7 +28,7 @@ export default function Nav() {
                 <span>Holistic Health</span>
             </button>
 
-            <div className="hidden items-center space-x-8 text-sm font-medium tracking-wide text-[#1A3326] md:flex">
+            <div className="absolute left-1/2 hidden -translate-x-1/2 items-center space-x-8 text-sm font-medium tracking-wide text-[#1A3326] md:flex">
                 <button
                     type="button"
                     onClick={() => navigate('/')}
@@ -48,7 +48,7 @@ export default function Nav() {
                     onClick={() => navigate('/')}
                     className="transition-colors hover:text-[#4E7A5E]"
                 >
-                    Our Ethos
+                    About Us
                 </button>
             </div>
 
