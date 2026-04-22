@@ -80,7 +80,7 @@ async function upsertCompound(food, searchTerm) {
 
 async function fetchUSDA() {
     if (!API_KEY) {
-        throw new Error('USDA_API_KEY is missing. Add it to your environment before running seed:usda.');
+        throw new Error('USDA_API_KEY is missing.');
     }
 
     console.log(`[${new Date().toISOString()}] Starting USDA pipeline - ${SEARCH_TERMS.length} terms`);
@@ -102,17 +102,10 @@ async function fetchUSDA() {
         })
     );
 
-    try {
-        await Promise.all(tasks);
+    await Promise.all(tasks);
 
-        const count = await pool.query('SELECT COUNT(*) FROM compounds');
-        console.log(`[${new Date().toISOString()}] Done - ${count.rows[0].count} total compounds in DB`);
-    } finally {
-        await pool.end();
-    }
+    const count = await pool.query('SELECT COUNT(*) FROM compounds');
+    console.log(`[${new Date().toISOString()}] Done - ${count.rows[0].count} total compounds in DB`);
 }
 
-fetchUSDA().catch((err) => {
-    console.error('Pipeline failed:', err.message);
-    process.exit(1);
-});
+module.exports = fetchUSDA;
