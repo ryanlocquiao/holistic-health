@@ -106,12 +106,19 @@ This project uses Node.js package dependencies in both the `server` and `client`
 
 ### Backend Dependencies (`server/package.json`)
 
+Runtime dependencies:
+
 - cors@^2.8.6
 - dotenv@^17.4.0
 - express@^5.2.1
 - node-fetch@^2.7.0
 - p-queue@^9.1.2
 - pg@^8.20.0
+
+Development dependencies:
+
+- jest@^30.3.0
+- supertest@^7.2.2
 
 Install backend dependencies:
 
@@ -125,6 +132,7 @@ Install backend dependencies explicitly:
 ```bash
 cd server
 npm install cors@^2.8.6 dotenv@^17.4.0 express@^5.2.1 node-fetch@^2.7.0 p-queue@^9.1.2 pg@^8.20.0
+npm install --save-dev jest@^30.3.0 supertest@^7.2.2
 ```
 
 ### Frontend Dependencies (`client/package.json`)
@@ -291,7 +299,14 @@ Open the Vite URL shown in terminal (typically http://localhost:5173).
 
 ## Testing and Verification
 
-This project currently uses runtime smoke testing and endpoint verification.
+This project includes automated backend tests (Jest + Supertest) and runtime smoke testing.
+
+### Run automated backend tests
+
+```bash
+cd server
+npm test
+```
 
 ### Manual smoke test checklist
 
@@ -325,7 +340,7 @@ Invoke-RestMethod -Uri "$base/api/compounds/32"
 
 - No authentication flow wired into the active UI yet.
 - No contraindication engine implemented in current release.
-- Test suite is manual/smoke-based; automated integration tests are a next milestone.
+- Automated test coverage is currently focused on backend search and route behavior; frontend UI testing is not yet implemented.
 - Search ranking is static-weighted (not personalized or ML-based).
 
 ## Future Enhancements
@@ -333,7 +348,7 @@ Invoke-RestMethod -Uri "$base/api/compounds/32"
 - Add login and user profile management.
 - Implement medication contraindication checks using interactions table.
 - Add saved remedies and history.
-- Add automated test coverage (API + UI).
+- Expand automated test coverage across API edge cases and frontend UI flows.
 - Add pagination/filtering and richer source citations.
 
 ## Deployment Notes
