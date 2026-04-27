@@ -46,7 +46,13 @@ async function testDbConnection() {
     }
 }
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    testDbConnection();
-});
+// Only start listening when this file is executed directly.
+// When imported by Supertest, listen() is intentionally skipped.
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+        testDbConnection();
+    });
+}
+
+module.exports = app;
