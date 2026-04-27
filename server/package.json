@@ -9,7 +9,8 @@
     "seed:usda": "node scripts/fetchUSDA.js",
     "seed:manual": "node scripts/seedManual.js",
     "seed:ailments": "node scripts/seedAilments.js",
-    "seed:all": "node scripts/runAllPipelines.js"
+    "seed:all": "node scripts/runAllPipelines.js",
+    "test": "jest --testEnvironment node"
   },
   "keywords": [],
   "author": "",
@@ -26,5 +27,11 @@
   "devDependencies": {
     "jest": "^30.3.0",
     "supertest": "^7.2.2"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ]
   }
 }
