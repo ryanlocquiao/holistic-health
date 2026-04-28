@@ -23,7 +23,8 @@ const compoundRoutes = require('./routes/compounds');
 app.use(cors({
     origin: [
         'http://localhost:5173',
-        'https://my-holistic-health.vercel.app'
+        'https://my-holistic-health.vercel.app',
+        'https://holistic-health-api.onrender.com'
     ]
 }));
 
