@@ -11,11 +11,10 @@ const { Pool } = require('pg');
  * - `DATABASE_URL` must be defined in environment variables.
  * - SSL is enabled for production deployments.
  */
-const isProduction = process.env.NODE_ENV === 'production';
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: isProduction ? { rejectUnauthorized: false } : false
+    ssl: { rejectUnauthorized: false }
 });
 
 module.exports = pool;
