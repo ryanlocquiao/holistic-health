@@ -94,6 +94,7 @@ describe('Compounds route', () => {
     });
 });
 
+// Close connection to DB
 afterAll(async () => {
     await pool.end();
 });

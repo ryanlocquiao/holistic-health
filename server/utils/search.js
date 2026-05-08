@@ -55,6 +55,18 @@ function isFuzzyMatch(query, target) {
     return distance <= allowedDistance;
 }
 
+function getFuzzyDistanceIfMatch(query, target) {
+    if (!query || !target) return null;
+
+    const distance = levenshtein(query, target);
+    const allowedDistance = Math.min(MAX_FUZZY_DISTANCE, getAllowedFuzzyDistance(query, target));
+    const maxLength = Math.max(query.length, target.length);
+
+    if (distance / maxLength > 0.3) return null;
+    if (distance > allowedDistance) return null;
+    return distance;
+}
+
 function scoreCompound(compound, ailments, normalizedQuery) {
     let textScore = 0;
     let qualityScore = 0;
@@ -66,8 +78,8 @@ function scoreCompound(compound, ailments, normalizedQuery) {
         if (name === normalizedQuery) textScore += 10;
         else if (name.includes(normalizedQuery)) textScore += 6;
 
-        if (isFuzzyMatch(normalizedQuery, name)) {
-            const dist = levenshtein(normalizedQuery, name);
+        const dist = getFuzzyDistanceIfMatch(normalizedQuery, name);
+        if (dist !== null) {
             textScore += 3 - Math.min(dist, 2);
         }
     }

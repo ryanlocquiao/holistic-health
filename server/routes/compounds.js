@@ -2,6 +2,13 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/index');
 
+/**
+ * Compound routes
+ *
+ * Endpoint:
+ * - GET /api/compounds/:id
+ */
+
 const SELECT_COMPOUND_BY_ID_SQL = `
     SELECT id, name, category, description, evidence_tier, source_url, created_at
     FROM compounds

@@ -68,13 +68,13 @@ async function upsertCompound(food, searchTerm) {
     const name = food.description || searchTerm;
     const category = food.category || 'Herbal / Natural Compound';
     const description = food.additionalDescriptions || food.description || null;
-    const source_url = `https://fdc.nal.usda.gov/fdc-app.html#/?fdcId=${food.fdcId}`;
+    const sourceUrl = `https://fdc.nal.usda.gov/fdc-app.html#/?fdcId=${food.fdcId}`;
     const result = await pool.query(UPSERT_COMPOUND_SQL, [
         name,
         category,
         description,
         USDA_EVIDENCE_TIER,
-        source_url
+        sourceUrl
     ]);
     
     return result.rows[0];
@@ -111,3 +111,14 @@ async function fetchUSDA() {
 }
 
 module.exports = fetchUSDA;
+
+if (require.main === module) {
+    fetchUSDA()
+        .catch((err) => {
+            console.error('USDA pipeline failed:', err.message);
+            process.exitCode = 1;
+        })
+        .finally(async () => {
+            await pool.end();
+        });
+}

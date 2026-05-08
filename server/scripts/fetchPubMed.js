@@ -78,3 +78,14 @@ async function fetchPubMed() {
 }
 
 module.exports = fetchPubMed;
+
+if (require.main === module) {
+    fetchPubMed()
+        .catch((err) => {
+            console.error('PubMed pipeline failed:', err.message);
+            process.exitCode = 1;
+        })
+        .finally(async () => {
+            await pool.end();
+        });
+}

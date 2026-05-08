@@ -102,3 +102,14 @@ async function fetchNCCIH() {
 }
 
 module.exports = fetchNCCIH;
+
+if (require.main === module) {
+    fetchNCCIH()
+        .catch((err) => {
+            console.error('NCCIH pipeline failed:', err.message);
+            process.exitCode = 1;
+        })
+        .finally(async () => {
+            await pool.end();
+        });
+}

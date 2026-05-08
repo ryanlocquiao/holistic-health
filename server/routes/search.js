@@ -3,6 +3,14 @@ const router = express.Router();
 const pool = require('../db/index');
 const { searchCompounds } = require('../utils/search');
 
+/**
+ * Search routes
+ *
+ * Endpoints:
+ * - GET /api/search?q=<query>
+ * - GET /api/search/ailments
+ */
+
 const MAX_QUERY_LENGTH = 200;
 
 const SELECT_COMPOUNDS_SQL = `
@@ -67,6 +75,7 @@ router.get('/ailments', async (req, res) => {
         const result = await pool.query('SELECT id, name FROM ailments ORDER BY name');
         res.json(result.rows);
     } catch (err) {
+        console.error('Ailments fetch error:', err.message);
         res.status(500).json({ error: 'Failed to fetch ailments' });
     }
 });
