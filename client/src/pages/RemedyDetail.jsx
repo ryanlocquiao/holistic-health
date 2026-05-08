@@ -64,11 +64,13 @@ export default function RemedyDetail() {
 
                 const data = await res.json()
                 setCompound(data)
-                setLoading(false)
             } catch (err) {
                 if (err.name === 'AbortError') return
                 setError(DEFAULT_NOT_FOUND_MESSAGE)
-                setLoading(false)
+            } finally {
+                if (!abortController.signal.aborted) {
+                    setLoading(false)
+                }
             }
         }
 

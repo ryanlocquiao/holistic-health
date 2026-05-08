@@ -97,11 +97,13 @@ export default function SearchResults() {
 
                 const data = await res.json()
                 setResults(Array.isArray(data) ? data : [])
-                setLoading(false)
             } catch (err) {
                 if (err.name === 'AbortError') return
                 setError(DEFAULT_ERROR_MESSAGE)
-                setLoading(false)
+            } finally {
+                if (!abortController.signal.aborted) {
+                    setLoading(false)
+                }
             }
         }
 

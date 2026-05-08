@@ -6,12 +6,13 @@ import { useNavigate } from 'react-router-dom'
  *
  * Responsibilities:
  * - Provide a consistent brand/header anchor.
- * - Return users to the landing search page.
+ * - Return users to the landing/search page.
  *
- * Run/test notes:
- * - This component is rendered on search and detail views.
- * - Verify the brand button returns to "/".
- * - Verify the header remains visually stable on narrow screens.
+ * Accessibility:
+ * - Brand button uses `aria-label` so screen readers have a clear target.
+ *
+ * Tests:
+ * - Clicking the brand should navigate to `/`.
  */
 export default function Nav() {
     const navigate = useNavigate()
@@ -29,32 +30,15 @@ export default function Nav() {
             </button>
 
             <div className="absolute left-1/2 hidden -translate-x-1/2 items-center space-x-8 text-sm font-medium tracking-wide text-[#1A3326] md:flex">
-                <button
-                    type="button"
-                    onClick={() => navigate('/')}
-                    className="transition-colors hover:text-[#4E7A5E]"
-                >
-                    Home
-                </button>
-                <button
-                    type="button"
-                    onClick={() => navigate('/search')}
-                    className="transition-colors hover:text-[#4E7A5E]"
-                >
-                    Remedies
-                </button>
-                <button
-                    type="button"
-                    onClick={() => navigate('/')}
-                    className="transition-colors hover:text-[#4E7A5E]"
-                >
-                    About Us
-                </button>
+                <button type="button" onClick={() => navigate('/')} className="transition-colors hover:text-[#4E7A5E]">Home</button>
+                <button type="button" onClick={() => navigate('/search')} className="transition-colors hover:text-[#4E7A5E]">Remedies</button>
+                <button type="button" onClick={() => navigate('/')} className="transition-colors hover:text-[#4E7A5E]">About Us</button>
             </div>
 
             <div className="hidden md:block">
                 <button
                     type="button"
+                    onClick={() => navigate('/login')}
                     className="rounded-full bg-[#2C4C3B] px-6 py-2.5 text-sm font-medium text-[#F9F6F0] transition-all hover:bg-[#1A3326]"
                 >
                     Login
