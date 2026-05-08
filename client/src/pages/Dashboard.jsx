@@ -1,49 +1,35 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { Sprout, Bookmark, Pill, Plus, Leaf, Search } from 'lucide-react'
+import Nav from '../components/Nav'
 
-/**
- * User dashboard page
- *
- * Responsibilities:
- * - Protect the view by checking for a stored `token` and `user` in localStorage.
- * - Provide a simple dashboard UX for saved remedies and medications.
- *
- * Notes:
- * - For local/admin preview, append `?admin=true` to the URL.
- */
 export default function Dashboard() {
-    const [authState] = useState(() => {
-        const params = new URLSearchParams(window.location.search)
+    const [user, setUser] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const navigate = useNavigate()
+    const location = useLocation()
 
-        if (params.get('admin') === 'true') {
-            return { user: { email: 'admin@local' }, redirectToLogin: false }
+    useEffect(() => {
+        const params = new URLSearchParams(location.search)
+        const isAdmin = params.get('admin') === 'true'
+
+        if (isAdmin) {
+            setUser({ email: 'admin@hh.local' })
+            setLoading(false)
+            return
         }
 
         const token = localStorage.getItem('token')
         const storedUser = localStorage.getItem('user')
 
         if (!token || !storedUser) {
-            return { user: null, redirectToLogin: true }
-        }
-
-        try {
-            return { user: JSON.parse(storedUser), redirectToLogin: false }
-        } catch {
-            console.warn('Failed to parse stored user, clearing localStorage')
-            localStorage.removeItem('user')
-            localStorage.removeItem('token')
-            return { user: null, redirectToLogin: true }
-        }
-    })
-    const { user, redirectToLogin } = authState
-    const navigate = useNavigate()
-
-    useEffect(() => {
-        if (redirectToLogin) {
             navigate('/login')
+            return
         }
-    }, [navigate, redirectToLogin])
+
+        setUser(JSON.parse(storedUser))
+        setLoading(false)
+    }, [navigate, location.search])
 
     function handleLogout() {
         localStorage.removeItem('token')
@@ -51,7 +37,7 @@ export default function Dashboard() {
         navigate('/')
     }
 
-    if (redirectToLogin) {
+    if (loading) {
         return (
             <div className="min-h-screen bg-[#F9F6F0] flex items-center justify-center selection:bg-[#4E7A5E] selection:text-white">
                 <div className="w-8 h-8 border-2 border-[#4E7A5E] border-t-transparent rounded-full animate-spin" />
@@ -59,51 +45,18 @@ export default function Dashboard() {
         )
     }
 
-    if (!user) {
-        return (
-            <div className="min-h-screen bg-[#F9F6F0] flex items-center justify-center selection:bg-[#4E7A5E] selection:text-white">
-                <div className="w-8 h-8 border-2 border-[#4E7A5E] border-t-transparent rounded-full animate-spin" />
-            </div>
-        )
-    }
-
-    // Extract first letter of email for avatars
-    const userInitial = user?.email?.charAt(0).toUpperCase() || 'U'
+    const userInitial = user?.email?.charAt(0).toUpperCase() || 'U';
 
     return (
-        <div className="relative min-h-screen font-sans selection:bg-[#4E7A5E] selection:text-white overflow-x-hidden bg-[#F9F6F0]">
+        <div className="relative min-h-screen font-sans selection:bg-[#4E7A5E] selection:text-white flex flex-col bg-[#F9F6F0]">
             
-            {/* Dashboard Navigation */}
-            <nav className="flex items-center justify-between px-8 py-6 w-full relative z-30 max-w-7xl mx-auto">
-                <Link to="/" className="flex items-center space-x-2 text-2xl font-serif font-bold text-[#1A3326] transition-opacity hover:opacity-80">
-                    <Sprout className="w-8 h-8 text-[#4E7A5E]" />
-                    <span>Holistic Health</span>
-                </Link>
-                
-                <div className="hidden md:flex space-x-8 text-sm font-medium tracking-wide text-[#1A3326]">
-                    <Link to="/" className="hover:text-[#4E7A5E] transition-colors">Remedies</Link>
-                    <Link to="/" className="hover:text-[#4E7A5E] transition-colors">Ailments</Link>
-                    <span className="text-[#4E7A5E] border-b-2 border-[#4E7A5E] pb-1 cursor-default">My Dashboard</span>
-                </div>
-                
-                {/* User Avatar - Acts as Sign Out */}
-                <button 
-                    onClick={handleLogout}
-                    title="Sign out"
-                    className="hidden md:flex items-center space-x-3 cursor-pointer group p-1.5 rounded-full hover:bg-white transition-colors border border-transparent hover:border-[#E9E4D8]"
-                >
-                    <div className="w-9 h-9 rounded-full bg-[#E9E4D8] text-[#4E7A5E] flex items-center justify-center font-bold text-sm shadow-sm group-hover:bg-[#4E7A5E] group-hover:text-white transition-colors">
-                        {userInitial}
-                    </div>
-                </button>
-            </nav>
+            <Nav />
 
-            <main className="max-w-6xl mx-auto px-6 pt-6 pb-24 animate-in fade-in duration-500">
+            <main className="max-w-6xl mx-auto px-6 pt-6 pb-24 animate-in fade-in duration-500 w-full flex-1">
                 <div className="grid lg:grid-cols-12 gap-8 items-start">
                     
                     {/* Left Sidebar Profile */}
                     <div className="lg:col-span-4 bg-[#1A3326] text-[#F9F6F0] rounded-[2rem] p-8 shadow-xl relative overflow-hidden group">
-                        {/* Subtle background leaf graphic */}
                         <div className="absolute -right-6 -bottom-6 text-[#2C4C3B] opacity-50 transform -rotate-12 group-hover:rotate-0 transition-transform duration-700 pointer-events-none">
                             <Leaf className="w-48 h-48" />
                         </div>
@@ -150,7 +103,6 @@ export default function Dashboard() {
                                 </h2>
                             </div>
                             
-                            {/* Empty State */}
                             <div className="bg-white rounded-2xl p-10 text-center flex flex-col items-center shadow-sm">
                                 <h3 className="text-[#1A3326] font-medium mb-2">No remedies saved yet</h3>
                                 <p className="text-sm text-[#3E5C4A] max-w-sm mx-auto mb-8">Discover natural alternatives and bookmark them to build your personal holistic library.</p>
@@ -173,7 +125,6 @@ export default function Dashboard() {
                                 </h2>
                             </div>
                             
-                            {/* Empty State */}
                             <div className="bg-white rounded-2xl p-10 text-center flex flex-col items-center shadow-sm">
                                 <h3 className="text-[#1A3326] font-medium mb-2">Safety first</h3>
                                 <p className="text-sm text-[#3E5C4A] max-w-sm mx-auto mb-8">Add your medications to automatically check for interactions with natural remedies.</p>

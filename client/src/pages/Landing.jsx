@@ -43,7 +43,7 @@ export default function Landing() {
     }
 
     return (
-        <div className="relative min-h-screen overflow-x-hidden bg-[#F9F6F0] font-sans selection:bg-[#4E7A5E] selection:text-white">
+        <div className="relative min-h-screen w-full bg-[#F9F6F0] font-sans flex flex-col">
             <Nav />
 
             <div className="animate-in fade-in pb-24 text-[#2C4C3B] duration-500">

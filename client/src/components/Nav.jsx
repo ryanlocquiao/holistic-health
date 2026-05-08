@@ -1,5 +1,5 @@
-import { Menu, Sprout } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Sprout } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 
 /**
  * Global top navigation for the app shell.
@@ -17,42 +17,58 @@ import { useNavigate } from 'react-router-dom'
 export default function Nav() {
     const navigate = useNavigate()
 
+    // Check auth state
+    const token = localStorage.getItem('token')
+    const userStr = localStorage.getItem('user')
+    const user = userStr ? JSON.parse(userStr) : null
+
+    const userInitial = user?.email?.charAt(0).toUpperCase() || 'U'
+
+    function handleLogout() {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        navigate('/')
+    }
+
     return (
-        <nav className="relative z-30 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-5 sm:px-8">
-            <button
-                onClick={() => navigate('/')}
-                type="button"
-                className="flex items-center gap-2 text-2xl font-serif font-bold text-[#1A3326] transition-opacity hover:opacity-80"
-                aria-label="Holistic Health home"
-            >
-                <Sprout className="h-8 w-8 text-[#4E7A5E]" />
-                <span>Holistic Health</span>
-            </button>
+        <header className="w-full relative z-40 bg-transparent">
+            <nav className="flex items-center justify-between px-6 md:px-8 py-6 w-full max-w-7xl mx-auto">
+                <Link to="/" className="flex items-center space-x-2 text-2xl font-serif font-bold text-[#1A3326] transition-opacity hover:opacity-80">
+                    <Sprout className="w-8 h-8 text-[#4E7A5E]" />
+                    <span>Holistic Health</span>
+                </Link>
 
-            <div className="absolute left-1/2 hidden -translate-x-1/2 items-center space-x-8 text-sm font-medium tracking-wide text-[#1A3326] md:flex">
-                <button type="button" onClick={() => navigate('/')} className="transition-colors hover:text-[#4E7A5E]">Home</button>
-                <button type="button" onClick={() => navigate('/search')} className="transition-colors hover:text-[#4E7A5E]">Remedies</button>
-                <button type="button" onClick={() => navigate('/')} className="transition-colors hover:text-[#4E7A5E]">About Us</button>
-            </div>
+                <div className="hidden md:flex items-center space-x-8 text-sm font-medium tracking-wide text-[#1A3326]">
+                    <Link to="/" className="hover:text-[#4E7A5E] transition-colors">Home</Link>
+                    <Link to="/search" className="hover:text-[#4E7A5E] transition-colors">Remedies</Link>
+                    {token ? (
+                        <Link to="/dashboard" className="hover:text-[#4E7A5E] transition-colors">My Dashboard</Link>
+                    ) : (
+                        <Link to="/about" className="hover:text-[#4E7A5E] transition-colors">About Us</Link>
+                    )}
+                </div>
 
-            <div className="hidden md:block">
-                <button
-                    type="button"
-                    onClick={() => navigate('/login')}
-                    className="rounded-full bg-[#2C4C3B] px-6 py-2.5 text-sm font-medium text-[#F9F6F0] transition-all hover:bg-[#1A3326]"
-                >
-                    Login
-                </button>
-            </div>
-
-            <button
-                type="button"
-                onClick={() => navigate('/search')}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[#1A3326] transition-colors hover:bg-[#EEF4EF] md:hidden"
-                aria-label="Open navigation"
-            >
-                <Menu className="h-6 w-6" />
-            </button>
-        </nav>
+                <div className="hidden md:block">
+                    {token ? (
+                        <button 
+                            onClick={handleLogout} 
+                            title="Sign out" 
+                            className="flex items-center space-x-3 cursor-pointer group p-1.5 rounded-full hover:bg-white transition-colors border border-transparent hover:border-[#E9E4D8]"
+                        >
+                            <div className="w-9 h-9 rounded-full bg-[#E9E4D8] text-[#4E7A5E] flex items-center justify-center font-bold text-sm shadow-sm group-hover:bg-[#4E7A5E] group-hover:text-white transition-colors">
+                                {userInitial}
+                            </div>
+                        </button>
+                    ) : (
+                        <Link 
+                            to="/login"
+                            className="inline-block bg-[#2C4C3B] text-[#F9F6F0] px-6 py-2.5 rounded-full text-sm font-medium hover:bg-[#1A3326] transition-all"
+                        >
+                            Login
+                        </Link>
+                    )}
+                </div>
+            </nav>
+        </header>
     )
 }

@@ -116,7 +116,7 @@ export default function SearchResults() {
     }, [query])
 
     return (
-        <div className="min-h-screen overflow-x-hidden bg-[#F9F6F0] font-sans text-[#2C4C3B] selection:bg-[#4E7A5E] selection:text-white">
+        <div className="relative min-h-screen w-full bg-[#F9F6F0] font-sans flex flex-col">
             <Nav />
 
             <main className="mx-auto max-w-7xl px-6 py-12 sm:px-8 lg:py-16">

@@ -100,7 +100,7 @@ export default function RemedyDetail() {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-[#F9F6F0] font-sans text-[#2C4C3B]">
+            <div className="relative min-h-screen w-full bg-[#F9F6F0] font-sans flex flex-col">
                 <Nav />
                 <div className="flex h-[70vh] items-center justify-center px-6">
                     <div className="max-w-md rounded-[2.5rem] border border-red-200 bg-red-50 p-10 text-center">
