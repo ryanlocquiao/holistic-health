@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowRight, Leaf } from 'lucide-react'
+import { ArrowRight, Leaf, Bookmark } from 'lucide-react'
 import Nav from '../components/Nav.jsx'
 
 /**
@@ -45,6 +45,11 @@ export default function RemedyDetail() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
 
+    const [bookmarked, setBookmarked] = useState(false)
+    const [bookmarkLoading, setBookmarkLoading] = useState(false)
+    const token = localStorage.getItem('token')
+
+    // Fetch compound
     useEffect(() => {
         const abortController = new AbortController()
 
@@ -80,6 +85,60 @@ export default function RemedyDetail() {
             abortController.abort()
         }
     }, [id])
+
+    // Check bookmark state
+    useEffect(() => {
+        if (!token || !compound) return
+
+        async function checkBookmark() {
+            try {
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/bookmarks`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+
+                if (!res.ok) return
+                const data = await res.json()
+                setBookmarked(data.some(b => b.id === compound.id))
+            } catch {
+                // Bookmark will just stay in its default state
+            }
+        }
+
+        checkBookmark()
+    }, [compound, token])
+
+    async function toggleBookmark() {
+        if (!token) {
+            navigate('/login')
+            return
+        }
+
+        setBookmarkLoading(true)
+        try {
+            if (bookmarked) {
+                await fetch(`${import.meta.env.VITE_API_URL}/api/bookmarks/${compound.id}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+
+                setBookmarked(false)
+            } else {
+                await fetch(`${import.meta.env.VITE_API_URL}/api/bookmarks`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ compoundId: compound.id })
+                })
+                setBookmarked(true)
+            }
+        } catch {
+            // UI stays consistent with last known server state
+        } finally {
+            setBookmarkLoading(false)
+        }
+    }
 
     if (loading) {
         return (
@@ -170,6 +229,19 @@ export default function RemedyDetail() {
                             <span className={'inline-flex w-fit rounded-full px-3 py-1 text-xs font-medium ' + (TIER_COLOR[evidenceTier] || TIER_COLOR[3])}>
                                 Tier {evidenceTier}
                             </span>
+                            <button
+                                onClick={toggleBookmark}
+                                disabled={bookmarkLoading}
+                                title={bookmarked ? 'Remove bookmark' : 'Save remedy'}
+                                className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all disabled:opacity-50 
+                                    ${bookmarked
+                                        ? 'bg-[#1A3326] text-[#F9F6F0] hover:bg-[#2C4C3B]'
+                                        : 'border border-[#E9E4D8] bg-white text-[#4E7A5E] hover:border-[#4E7A5E] hover:bg-[#F9F6F0]'
+                                    }`}
+                            >
+                                <Bookmark className={`h-4 w-4 transition-all ${bookmarked ? 'fill-current' : ''}`} />
+                                {bookmarkLoading ? '...' : bookmarked ? 'Saved' : 'Save'}
+                            </button>
                         </div>
 
                         <div className="mt-8 grid gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
