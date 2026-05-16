@@ -71,9 +71,19 @@ CREATE TABLE IF NOT EXISTS interactions (
     description TEXT
 );
 
+-- Bookmarks:
+CREATE TABLE IF NOT EXISTS bookmarks (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    compound_id INTEGER NOT NULL REFERENCES compounds(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, compound_id)
+);
+
 -- Indexes for common lookups and join paths.
 CREATE INDEX IF NOT EXISTS idx_compounds_name ON compounds(name);
 CREATE INDEX IF NOT EXISTS idx_ailments_name ON ailments(name);
 CREATE INDEX IF NOT EXISTS idx_compound_ailments_compound ON compound_ailments(compound_id);
 CREATE INDEX IF NOT EXISTS idx_compound_ailments_ailment ON compound_ailments(ailment_id);
 CREATE INDEX IF NOT EXISTS idx_compounds_evidence_tier ON compounds(evidence_tier);
+CREATE INDEX IF NOT EXISTS idx_bookmarks_user_id ON bookmarks(user_id);

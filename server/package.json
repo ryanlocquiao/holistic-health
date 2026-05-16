@@ -10,6 +10,7 @@
     "seed:manual": "node scripts/seedManual.js",
     "seed:ailments": "node scripts/seedAilments.js",
     "seed:all": "node scripts/runAllPipelines.js",
+    "seed:admin": "node scripts/seedAdmin.js",
     "test": "jest --testEnvironment node"
   },
   "keywords": [],

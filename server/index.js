@@ -14,6 +14,7 @@ const pool = require('./db/index');
 
 const searchRoutes = require('./routes/search');
 const compoundRoutes = require('./routes/compounds');
+const bookmarkRoutes = require('./routes/bookmarks')
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -52,6 +53,7 @@ app.get('/health', (req, res) => {
 
 app.use('/api/search', searchRoutes);
 app.use('/api/compounds', compoundRoutes);
+app.use('/api/bookmarks', bookmarkRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 
