@@ -38,6 +38,13 @@ function getEvidenceTier(compound) {
     return compound?.evidence_tier ?? 3
 }
 
+function getSourceUrlHref(sourceUrl) {
+    if (!sourceUrl) return null
+    if (/^https?:\/\//i.test(sourceUrl)) return sourceUrl
+
+    return `https://${sourceUrl}`
+}
+
 export default function RemedyDetail() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -194,6 +201,7 @@ export default function RemedyDetail() {
     }
 
     const evidenceTier = getEvidenceTier(compound)
+    const sourceUrlHref = getSourceUrlHref(compound.source_url)
 
     return (
         <div className="min-h-screen overflow-x-hidden bg-[#F9F6F0] font-sans text-[#2C4C3B] selection:bg-[#4E7A5E] selection:text-white">
@@ -285,9 +293,18 @@ export default function RemedyDetail() {
                                     <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-[#4E7A5E]">
                                         Source
                                     </h2>
-                                    <p className="break-all text-sm text-[#3E5C4A]">
-                                        {compound.source_url}
-                                    </p>
+                                    {sourceUrlHref ? (
+                                        <a
+                                            href={sourceUrlHref}
+                                            target="_blank"
+                                            rel="noreferrer noopener"
+                                            className="break-all text-sm font-medium text-[#4E7A5E] underline decoration-[#A3B899] decoration-2 underline-offset-4 transition-colors hover:text-[#1A3326]"
+                                        >
+                                            {compound.source_url}
+                                        </a>
+                                    ) : (
+                                        <p className="text-sm text-[#3E5C4A]">Source unavailable.</p>
+                                    )}
                                 </section>
                             </aside>
                         </div>
