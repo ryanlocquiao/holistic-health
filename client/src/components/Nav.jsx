@@ -1,5 +1,6 @@
 import { Sprout } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
 
 /**
  * Global top navigation for the app shell.
@@ -16,6 +17,22 @@ import { Link, useNavigate } from 'react-router-dom'
  */
 export default function Nav() {
     const navigate = useNavigate()
+    const [showDropdown, setShowDropdown] = useState(false)
+    const dropdownRef = useRef(null)
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setShowDropdown(false)
+            }
+        }
+
+        document.addEventListener("mousedown", handleClickOutside)
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside)
+        }
+    }, [])
 
     // Check auth state
     const token = localStorage.getItem('token')
@@ -50,15 +67,38 @@ export default function Nav() {
 
                 <div className="hidden md:block">
                     {token ? (
-                        <button 
-                            onClick={handleLogout} 
-                            title="Sign out" 
-                            className="flex items-center space-x-3 cursor-pointer group p-1.5 rounded-full hover:bg-white transition-colors border border-transparent hover:border-[#E9E4D8]"
-                        >
-                            <div className="w-9 h-9 rounded-full bg-[#E9E4D8] text-[#4E7A5E] flex items-center justify-center font-bold text-sm shadow-sm group-hover:bg-[#4E7A5E] group-hover:text-white transition-colors">
-                                {userInitial}
-                            </div>
-                        </button>
+                        <div className="relative" ref={dropdownRef}>
+                            <button 
+                                onClick={() => setShowDropdown(!showDropdown)} // Toggles menu
+                                title="Account Menu" 
+                                className="flex items-center space-x-3 cursor-pointer group p-1.5 rounded-full hover:bg-white transition-colors border border-transparent hover:border-[#E9E4D8]"
+                            >
+                                <div className="w-9 h-9 rounded-full bg-[#E9E4D8] text-[#4E7A5E] flex items-center justify-center font-bold text-sm shadow-sm group-hover:bg-[#4E7A5E] group-hover:text-white transition-colors">
+                                    {userInitial}
+                                </div>
+                            </button>
+
+                            {showDropdown && (
+                                <div className="absolute right-0 mt-3 w-48 bg-white border border-[#E9E4D8] rounded-2xl shadow-sm py-2 z-50 overflow-hidden">
+                                    <Link 
+                                        to="/settings" 
+                                        onClick={() => setShowDropdown(false)} // Closes on click
+                                        className="block w-full text-left px-5 py-2.5 text-sm font-medium text-[#1A3326] hover:bg-[#F9F6F0] transition-colors"
+                                    >
+                                        Settings
+                                    </Link>
+                                    <button 
+                                        onClick={() => {
+                                            setShowDropdown(false)
+                                            handleLogout()
+                                        }} 
+                                        className="block w-full text-left px-5 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                                    >
+                                        Sign Out
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     ) : (
                         <Link 
                             to="/login"
