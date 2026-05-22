@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowRight, Leaf, Bookmark } from 'lucide-react'
+import { ArrowRight, Leaf, Bookmark, AlertTriangle } from 'lucide-react'
 import Nav from '../components/Nav.jsx'
 
 /**
@@ -30,6 +30,27 @@ const TIER_DESC = {
     1: 'Peer-reviewed study',
     2: 'Institutional recommendation',
     3: 'Anecdotal / community data'
+}
+
+const SEVERITY_CONFIG = {
+    3: { 
+        label: 'High Risk',
+        bg: 'bg-red-50', 
+        border: 'border-red-400',
+        text: 'text-red-800'
+    },
+    2: { 
+        label: 'Moderate',
+        bg: 'bg-orange-50', 
+        border: 'border-orange-400',
+        text: 'text-orange-800'
+    },
+    1: { 
+        label: 'Low Risk',
+        bg: 'bg-yellow-50', 
+        border: 'border-yellow-400',
+        text: 'text-yellow-800'
+    },
 }
 
 const DEFAULT_NOT_FOUND_MESSAGE = 'Compound not found.'
