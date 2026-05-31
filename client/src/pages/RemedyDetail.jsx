@@ -75,6 +75,11 @@ export default function RemedyDetail() {
 
     const [bookmarked, setBookmarked] = useState(false)
     const [bookmarkLoading, setBookmarkLoading] = useState(false)
+
+    const [conflicts, setConflicts] = useState([])
+    const [conflictLoading, setConflictLoading] = useState(false)
+    const [userHasMeds, setUserHasMeds] = useState(false)
+
     const token = localStorage.getItem('token')
 
     // Fetch compound
@@ -135,6 +140,41 @@ export default function RemedyDetail() {
         checkBookmark()
     }, [compound, token])
 
+    useEffect(() => {
+        if (!compound || !token) return
+
+        async function checkContraindications() {
+            setConflictLoading(true)
+            try {
+                const medRes = await fetch(
+                    `${import.meta.env.VITE_API_URL}/api/medications/mine`,
+                    { headers: { Authorization: `Bearer ${token}` }}
+                )
+
+                if (!medRes.ok) return
+
+                const meds = await medRes.json()
+                setUserHasMeds(meds.length > 0)
+                if (!meds.length) return
+
+                const medIds = meds.map(m => m.id).join(',')
+                const intRes = await fetch(
+                    `${import.meta.env.VITE_API_URL}/api/interactions?compound=${compound.id}&medications=${medIds}`
+                )
+                if (!intRes.ok) return
+
+                const data = await intRes.json()
+                setConflicts(data.conflicts || [])
+            } catch (err) {
+                console.error('Contraindication check failed:', err)
+            } finally {
+                setConflictLoading(false)
+            }
+        }
+
+        checkContraindications()
+    }, [compound, token])
+
     async function toggleBookmark() {
         if (!token) {
             navigate('/login')
@@ -166,6 +206,81 @@ export default function RemedyDetail() {
         } finally {
             setBookmarkLoading(false)
         }
+    }
+
+    function ContraindicationSection() {
+        if (!token) {
+            return (
+                <div className="mt-8 rounded-[2rem] border border-[#E9E4D8] bg-[#F9F6F0] p-4 text-sm text-[#3E5C4A]">
+                    <p className="text-xs text-[#4E7A5E]">
+                        <button 
+                            onClick={() => navigate('/login')} 
+                            className="font-medium underline decoration-[#A3B899] underline-offset-4 hover:text-[#1A3326]"
+                        >
+                            Sign In
+                        </button>{' '}
+                        to check this remedy against your medications.
+                    </p>
+                </div>
+            )
+        }
+
+        if (conflictLoading) {
+            return (
+                <div className="mt-8 rounded-[2rem] border border-[#E9E4D8] bg-[#F9F6F0] p-4 text-sm text-[#4E7A5E]">
+                    Checking for interactions...
+                </div>
+            )
+        }
+
+        if (!userHasMeds) {
+            return (
+                <div className="mt-8 rounded-[2rem] border border-[#E9E4D8] bg-[#F9F6F0] p-4 text-sm text-[#3E5C4A]">
+                    <p className="text-xs text-[#4E7A5E]">
+                        No medications saved.{' '}
+                        <button
+                            onClick={() => navigate('/dashboard')}
+                            className="font-medium underline decoration-[#A3B899] underline-offset-4 hover:text-[#1A3326]"
+                        >
+                            Add them in your dashboard
+                        </button>{' '}
+                        to check for interactions.
+                    </p>
+                </div>
+            )
+        }
+
+        if (conflicts.length === 0) {
+            return (
+                <div className="mt-8 rounded-[2rem] border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+                 No known interactions with your current medications.
+                </div>
+            )
+        }
+
+        return (
+            <div className="mt-8 space-y-3">
+                {conflicts.map((conflict, i) => {
+                    const config = SEVERITY_CONFIG[conflict.severity] || SEVERITY_CONFIG[1]
+                    return (
+                        <div
+                            key={i}
+                            className={`flex gap-3 rounded-[2rem] border-l-4 p-5 ${config.bg} ${config.border}`}
+                        >
+                            <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${config.text}`} />
+                            <div>
+                                <p className={`text-sm font-semibold ${config.text}`}>
+                                    {config.label} Interaction
+                                </p>
+                                <p className={`mt-1 text-sm ${config.text}`}>
+                                    {conflict.description || 'Consult your provider before combining these.'}
+                                </p>
+                            </div>
+                        </div>
+                    )
+                })}
+            </div>
+        )
     }
 
     if (loading) {
@@ -330,13 +445,9 @@ export default function RemedyDetail() {
                             </aside>
                         </div>
 
-                        <div className="mt-8 rounded-[2rem] border border-[#E9E4D8] bg-[#F9F6F0] p-4 text-sm text-[#3E5C4A]">
-                            <p className="text-xs text-[#4E7A5E]">
-                                Contraindication check available after login — coming soon.
-                            </p>
+                            <ContraindicationSection />
                         </div>
                     </div>
-                </div>
                 </div>
             </main>
         </div>
