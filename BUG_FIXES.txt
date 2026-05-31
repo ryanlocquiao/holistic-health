@@ -1,0 +1,6 @@
+BUG FIX LIST:
+- When searching for a remedy, the search box scales to the length of the searched word
+- Extra side scrollbar needs to be removed on multiple pages
+
+TODO LIST:
+- Find way to add typical prescribed medications like Tylenol, Ibuprofen, etc.
