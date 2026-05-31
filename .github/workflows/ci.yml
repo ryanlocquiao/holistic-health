@@ -15,9 +15,9 @@ jobs:
         working-directory: server
 
     steps:
-      - uses: actions/checout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.jobs
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -28,7 +28,7 @@ jobs:
         run: npm ci
 
       - name: Run tests
-        run : npm test --if-present
+        run: npm test --if-present
 
   frontend:
     name: Frontend - Lint & Build
