@@ -1,6 +1,10 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+
+// TODO: Edit README to update package dependencies [helmet, express-rate-limit]
 
 /**
  * Server bootstrap
@@ -37,6 +41,14 @@ const allowedOrigins = [
     'https://holistic-health-api.onrender.com'
 ];
 
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 15,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' }
+});
+
 // Allow a single client origin override from environment for local/test overrides
 if (process.env.CLIENT_URL) allowedOrigins.unshift(process.env.CLIENT_URL);
 
@@ -45,6 +57,8 @@ app.use(
         origin: allowedOrigins
     })
 );
+
+app.use(helmet());
 
 app.use(express.json());
 
@@ -59,6 +73,7 @@ app.use('/api/interactions', interactionRoutes);
 app.use('/api/medications', medicationRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/users', authLimiter);
 
 // Test DB connection on startup
 async function testDbConnection() {

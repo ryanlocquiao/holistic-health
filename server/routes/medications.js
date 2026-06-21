@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const requireAuth = require('../middleware/requireAuth');
+const { body, validationResult } = require('express-validator');
 
 // GET /api/medications
 router.get('/', async (req, res) => {
@@ -34,12 +35,19 @@ router.get('/mine', requireAuth, async (req, res) => {  // â† fix 1: '.mine' â†
 });
 
 // POST /api/medications/mine
-router.post('/mine', requireAuth, async (req, res) => {
-    const { medication_ids } = req.body;
+router.post('/mine', requireAuth, [
+    body('medication_ids')
+        .isArray().withMessage('medication_ids must be an array.'),
+    body('medication_ids.*')
+        .isInt({ min: 1 }).withMessage('Each medication ID must be a positive integer.')
+], async (req, res) => {
+    const errors = validationResult(req);
 
-    if (!Array.isArray(medication_ids)) {
-        return res.status(400).json({ error: 'medication_ids must be an array' });
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
+
+    const { medication_ids } = req.body;
 
     try {
         await db.query('DELETE FROM user_medications WHERE user_id = $1', [req.user.userId]);
