@@ -1,208 +1,132 @@
 # Holistic Health
 
-A full-stack Capstone project for CSS497 focused on discoverability of evidence-based natural remedies for common symptoms and health concerns.
+A full-stack CSS 497 capstone project for discovering evidence-aware natural remedies, saving favorite compounds, and checking saved medications for known remedy interactions.
 
-## Capstone Context (CSS497)
+## What The App Does
 
-This project demonstrates:
+- Search natural compounds by symptom, herb, compound name, category, or related ailment.
+- Rank results with weighted text matching, fuzzy matching, and evidence-tier tie breaking.
+- Show remedy detail pages with descriptions, evidence tier, source URL, and linked ailments.
+- Register and log in with JWT-backed authentication.
+- Save remedies to a personal dashboard.
+- Maintain a medication list and check remedy detail pages for known interactions.
+- Seed curated compounds, ailments, medication catalog entries, sources, and interaction records.
 
-- End-to-end product development (UI, API, and database).
-- Data modeling and relational schema design.
-- Search relevance logic using weighted ranking and fuzzy matching.
-- Clean architecture and modular code organization.
-- Production-minded implementation patterns (error handling, validation, and environment-driven configuration).
+## Architecture
 
-The application helps users explore natural compounds by symptom, review compound detail, evidence tier, and source context.
+The repository is a small monorepo with two apps:
 
-## Key Features
+- `client/`: React 19, Vite, React Router, Tailwind CSS, and lucide-react icons.
+- `server/`: Express 5, PostgreSQL, JWT auth, route validation, and seed scripts.
 
-- Free-text search with weighted relevance scoring and typo tolerance.
-- Fuzzy matching (Levenshtein distance) for misspellings.
-- Ranking that prioritizes exact name and ailment matches with evidence-tier tie-breaking.
-- Compound detail pages with category, evidence tier, source, and related ailments.
-- Data ingestion and seeding pipelines (manual curation and USDA ingestion).
+High-level search flow:
 
-## System Architecture
+1. A user submits a query in the React UI.
+2. The client calls `GET /api/search?q=...`.
+3. The API loads compounds and compound-ailment rows from PostgreSQL.
+4. `server/utils/search.js` scores each compound.
+5. The API returns the top 10 ranked results with a computed `score`.
 
-The repository is a monorepo with two primary apps:
+Interaction-check flow:
 
-- `client/` — React 19 + Vite SPA (frontend UI, routing, and interactions).
-- `server/` — Express 5 API (routes, validation, DB access, search utilities, and seed scripts).
-
-High-level request flow:
-
-1. User submits a query on the frontend.
-2. Frontend calls `GET /api/search?q=...` on the backend.
-3. Backend loads compounds and `compound_ailments` links from the DB.
-4. `server/utils/search.js` scores each compound using weighted and fuzzy matching.
-5. Top ranked results (cap 10) are returned to the client.
+1. A signed-in user saves medications from the dashboard.
+2. The detail page fetches saved medication IDs.
+3. The client calls `GET /api/interactions?compound=<id>&medications=<ids>`.
+4. The API loads direct compound-medication interaction edges and returns matching conflicts sorted by severity.
 
 ## Repository Structure
 
 ```text
 holistic-health/
-	client/                  # React frontend
-		public/
-		src/
-			App.jsx
-			main.jsx
-			index.css
-			components/
-				Nav.jsx
-			pages/
-				Landing.jsx
-				SearchResults.jsx
-				RemedyDetail.jsx
-	server/                  # Express backend
-		db/
-			schema.sql
-			migrate.js
-			index.js
-		middleware/
-			requireAuth.js
-		routes/
-			search.js
-			compounds.js
-			auth.js
-			users.js
-			medications.js
-			bookmarks.js
-			interactions.js
-		scripts/
-			fetchUSDA.js
-			fetchPubMed.js
-			runAllPipelines.js
-			seedAdmin.js
-			seedAilments.js
-			seedManual.js
-		utils/
-			search.js
-			graph.js
-		index.js
-		package.json
-	README.md
-	BUG_FIXES.txt
+  client/
+    public/
+    src/
+      components/
+        Nav.jsx
+      pages/
+        Dashboard.jsx
+        Landing.jsx
+        Login.jsx
+        Register.jsx
+        RemedyDetail.jsx
+        SearchResults.jsx
+      App.jsx
+      index.css
+      main.jsx
+    package.json
+    vite.config.js
+  server/
+    db/
+      index.js
+      migrate.js
+      schema.sql
+    middleware/
+      requireAuth.js
+    routes/
+      auth.js
+      bookmarks.js
+      compounds.js
+      interactions.js
+      medications.js
+      search.js
+      users.js
+    scripts/
+      fetchNCCIH.js
+      fetchPubMed.js
+      fetchUSDA.js
+      runAllPipelines.js
+      seedAdmin.js
+      seedAilments.js
+      seedManual.js
+    tests/
+      integration/
+      unit/
+    utils/
+      graph.js
+      search.js
+    index.js
+    package.json
+  BUG_FIXES.txt
+  README.md
 ```
 
-## Technology Stack
+## Requirements
 
-- Frontend: React 19, React Router 7, Vite 8, Tailwind CSS
-- Backend: Node.js, Express 5, PostgreSQL
+- Node.js compatible with the installed dependencies.
+- PostgreSQL database reachable by `DATABASE_URL`.
+- Optional USDA FoodData Central API key for USDA ingestion.
 
-## Dependencies
-# Holistic Health
+## Environment Variables
 
-A full-stack Capstone project for CSS497 focused on discoverability of evidence-based natural remedies for common symptoms and health concerns.
+Create `server/.env`:
 
-## Capstone Context (CSS497)
-
-This project demonstrates:
-
-- End-to-end product development (UI, API, and database).
-- Data modeling and relational schema design.
-- Search relevance logic using weighted ranking and fuzzy matching.
-- Clean architecture and modular code organization.
-- Production-minded implementation patterns (error handling, validation, and environment-driven configuration).
-
-The application helps users explore natural compounds by symptom, review compound detail, evidence tier, and source context.
-
-## Key Features
-
-- Free-text search with weighted relevance scoring and typo tolerance.
-- Fuzzy matching (Levenshtein distance) for misspellings.
-- Ranking that prioritizes exact name and ailment matches with evidence-tier tie-breaking.
-- Compound detail pages with category, evidence tier, source, and related ailments.
-- Data ingestion and seeding pipelines (manual curation and USDA ingestion).
-
-## System Architecture
-
-The repository is a monorepo with two primary apps:
-
-- `client/` — React 19 + Vite SPA (frontend UI, routing, and interactions).
-- `server/` — Express 5 API (routes, validation, DB access, search utilities, and seed scripts).
-
-High-level request flow:
-
-1. User submits a query on the frontend.
-2. Frontend calls `GET /api/search?q=...` on the backend.
-3. Backend loads compounds and `compound_ailments` links from the DB.
-4. `server/utils/search.js` scores each compound using weighted and fuzzy matching.
-5. Top ranked results (cap 10) are returned to the client.
-
-## Repository Structure
-
-```text
-holistic-health/
-	client/                  # React frontend
-		public/
-		src/
-			App.jsx
-			main.jsx
-			index.css
-			components/
-				Nav.jsx
-			pages/
-				Landing.jsx
-				SearchResults.jsx
-				RemedyDetail.jsx
-	server/                  # Express backend
-		db/
-			schema.sql
-			migrate.js
-			index.js
-		middleware/
-			requireAuth.js
-		routes/
-			search.js
-			compounds.js
-			auth.js
-			users.js
-			medications.js
-			bookmarks.js
-			interactions.js
-		scripts/
-			fetchUSDA.js
-			fetchPubMed.js
-			runAllPipelines.js
-			seedAdmin.js
-			seedAilments.js
-			seedManual.js
-		utils/
-			search.js
-			graph.js
-		index.js
-		package.json
-	README.md
-	BUG_FIXES.txt
+```env
+DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<database>
+JWT_SECRET=<long_random_secret>
+ACCESS_TOKEN_EXPIRES_IN=15m
+REFRESH_TOKEN_TTL_DAYS=7
+REFRESH_TOKEN_HASH_SECRET=<optional_dedicated_refresh_hash_secret>
+PORT=8080
+CLIENT_URL=http://localhost:5173
+USDA_API_KEY=<optional_usda_api_key>
 ```
 
-## Technology Stack
+Create `client/.env`:
 
-- Frontend: React 19, React Router 7, Vite 8, Tailwind CSS
-- Backend: Node.js, Express 5, PostgreSQL
+```env
+VITE_API_URL=http://localhost:8080
+```
 
-## Dependencies
+Notes:
 
-This section lists the actual runtime and development packages used by each app (pulled from `package.json`).
+- `JWT_SECRET` is required for access JWT signing and protected routes.
+- `ACCESS_TOKEN_EXPIRES_IN` defaults to `15m`.
+- `REFRESH_TOKEN_TTL_DAYS` defaults to `7`.
+- `REFRESH_TOKEN_HASH_SECRET` defaults to `JWT_SECRET`; set it separately in production to isolate refresh-token hash storage from JWT signing.
+- `USDA_API_KEY` is required only for `npm run seed:usda` or the full pipeline.
+- `CLIENT_URL` is optional, but useful when the frontend runs on a non-default local URL.
 
-**Server (`server/package.json`) — runtime dependencies:**
-
-- `bcrypt` ^6.0.0
-- `cors` ^2.8.6
-- `dotenv` ^17.4.0
-- `express` ^5.2.1
-- `express-rate-limit` ^8.5.2
-- `express-validator` ^7.3.2
-- `helmet` ^8.2.0
-- `jsonwebtoken` ^9.0.3
-- `node-fetch` ^2.7.0
-- `p-queue` ^9.1.2
-- `pg` ^8.20.0
-
-**Server — devDependencies:**
-
-- `jest` ^30.3.0 (test runner)
-- `supertest` ^7.2.2 (HTTP assertions)
+## Install
 
 Install backend dependencies:
 
@@ -211,203 +135,176 @@ cd server
 npm install
 ```
 
-**Client (`client/package.json`) — production dependencies:**
-
-- `lucide-react` ^1.8.0
-- `react` ^19.2.5
-- `react-dom` ^19.2.5
-- `react-router-dom` ^7.14.2
-
-**Client — devDependencies:**
-
-- `@eslint/js` ^9.39.4
-- `@types/react` ^19.2.14
-- `@types/react-dom` ^19.2.3
-- `@vitejs/plugin-react` ^6.0.1
-- `autoprefixer` ^10.5.0
-- `eslint` ^9.39.4
-- `eslint-plugin-react-hooks` ^7.1.1
-- `eslint-plugin-react-refresh` ^0.5.2
-- `globals` ^17.5.0
-- `postcss` ^8.5.10
-- `tailwindcss` ^3.4.19
-- `vite` ^8.0.9
-
 Install frontend dependencies:
 
 ```bash
-cd client
-npm install
-```
-
-## Data Model Overview
-
-Core entities in the relational schema:
-
-- `compounds` — remedies and metadata
-- `ailments` — searchable categories
-- `compound_ailments` — join table linking compounds to ailments
-
-Planned/extended entities (present in schema.sql and referenced by migrations): `users`, `medications`, `user_medications`, `interactions`, `sources`.
-
-## Search Design
-
-Search scoring lives in `server/utils/search.js`. Key behaviors:
-
-- Exact name matches receive top weight.
-- Partial and description/category text matches add medium weight.
-- Ailment matches give a strong boost to ranking.
-- Fuzzy matching (Levenshtein distance <= 2) provides typo tolerance.
-- Evidence tier is used as a small tie-breaker.
-- Results are capped at 10 for broad queries.
-
-## API Endpoints
-
-**Health**
-
-- `GET /health` — Response: `{ "status": "ok" }`
-
-**Search Compounds**
-
-- `GET /api/search?q=...` — Query validations: `q` required, max length 200. Returns ranked compound array with computed `score` field.
-
-**List Ailments**
-
-- `GET /api/search/ailments` — Returns ailment categories sorted by name.
-
-**Compound Detail**
-
-- `GET /api/compounds/:id` — `id` must be a positive integer; returns compound metadata plus linked ailments.
-
-## Environment Variables
-
-Create a `.env` file in `server/` with:
-
-```env
-DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<database>
-PORT=8080
-USDA_API_KEY=<your_usda_api_key>
-```
-
-Create a `.env` file in `client/` with:
-
-```env
-VITE_API_URL=http://localhost:8080
-```
-
-Notes:
-
-- `USDA_API_KEY` is required only for USDA ingestion.
-- CORS is configured for local Vite dev and the deployed frontend domain.
-
-## Local Setup and Run
-
-1) Install dependencies
-
-```bash
-cd server
-npm install
-
 cd ../client
 npm install
 ```
 
-2) Initialize database schema
+## Database Setup
+
+Apply the schema:
 
 ```bash
 cd server
 npm run migrate
 ```
 
-3) Seed data (recommended order)
+Seed the stable local dataset:
 
 ```bash
 npm run seed:manual
 npm run seed:ailments
-# optional: npm run seed:usda
+node scripts/fetchNCCIH.js
+npm run seed:admin
 ```
 
-4) Start backend
+Optional external-data enrichment:
+
+```bash
+npm run seed:usda
+node scripts/fetchPubMed.js
+```
+
+Full pipeline:
+
+```bash
+npm run seed:all
+```
+
+## Run Locally
+
+Start the backend:
 
 ```bash
 cd server
 npm start
 ```
 
-5) Start frontend
+Verify backend health:
+
+```bash
+curl http://localhost:8080/health
+```
+
+Start the frontend:
 
 ```bash
 cd client
 npm run dev
 ```
 
-Open the Vite URL shown in terminal (typically http://localhost:5173).
+Open the Vite URL shown in the terminal, typically `http://localhost:5173`.
 
-## Testing and Verification
+## API Summary
 
-This repository includes both unit and integration tests for the backend. Tests are run with `jest` and use `supertest` for HTTP-layer assertions.
+Health:
 
-**How tests are organized**
+- `GET /health`: returns `{ "status": "ok" }`.
 
-- `server/tests/unit/search.test.js` — Unit tests for `searchCompounds` scoring logic (exact match, fuzzy match, ailment influence, evidence tier, score field presence, input trimming, immutability, and result capping).
-- `server/tests/integration/search.routes.test.js` — Integration tests for `GET /api/search` and `GET /api/compounds/:id` (status codes, response shapes, validation errors). These tests assume the DB has been migrated and seeded.
+Auth:
 
-**Run backend tests**
+- `POST /api/auth/register`: creates a user and returns `{ accessToken, token, refreshToken, refreshTokenExpiresAt, user }`.
+- `POST /api/auth/login`: authenticates a user and returns `{ accessToken, token, refreshToken, refreshTokenExpiresAt, user }`.
+- `POST /api/auth/refresh`: rotates a valid refresh token and returns a new access/refresh token pair.
+- `POST /api/auth/logout`: revokes the submitted refresh token.
+
+Auth notes:
+
+- `token` is a backwards-compatible alias for `accessToken`.
+- Refresh tokens are opaque random strings, stored only as HMAC-SHA-256 hashes in PostgreSQL.
+- Rotated refresh tokens are marked used. Reusing a used token revokes the full token family and requires a fresh login.
+
+Search and compounds:
+
+- `GET /api/search?q=...`: returns ranked compound results. `q` is required and capped at 200 characters.
+- `GET /api/search/ailments`: returns ailment categories sorted by name.
+- `GET /api/compounds/:id`: returns a compound plus linked ailments.
+
+Bookmarks:
+
+- `GET /api/bookmarks`: returns the signed-in user's saved remedies.
+- `POST /api/bookmarks`: saves `{ compoundId }`.
+- `DELETE /api/bookmarks/:compoundId`: removes a saved remedy.
+
+Medications and interactions:
+
+- `GET /api/medications`: returns the searchable medication catalog.
+- `GET /api/medications/mine`: returns the signed-in user's medications.
+- `POST /api/medications/mine`: replaces the signed-in user's medication IDs with `{ medication_ids: number[] }`.
+- `GET /api/interactions?compound=<id>&medications=<id1>,<id2>`: returns conflicts for a compound and medication list.
+
+## Testing And Verification
+
+Frontend lint:
+
+```bash
+cd client
+npm run lint
+```
+
+Frontend production build:
+
+```bash
+cd client
+npm run build
+```
+
+Backend unit tests:
+
+```bash
+cd server
+npm test -- --runTestsByPath tests/unit/search.test.js
+```
+
+Refresh-token focused tests:
+
+```bash
+cd server
+npm test -- --runTestsByPath tests/unit/tokens.test.js tests/integration/auth.refresh.test.js
+```
+
+All backend tests:
 
 ```bash
 cd server
 npm test
 ```
 
-**Testing notes & methods**
+Integration test notes:
 
-- Unit tests exercise `server/utils/search.js` directly with mocked compound arrays and ailment maps to validate ranking logic independent of HTTP/DB layers.
-- Integration tests start the Express app (via `server/index.js`) and use `supertest` to make requests against routes. These tests require a prepared DB (run `npm run migrate` and `npm run seed:manual` / `npm run seed:ailments`).
-- Jest runs with the `node` test environment as configured in `server/package.json`.
-- Tests that touch the DB close connections with `pool.end()` in `afterAll` hooks to avoid hanging test runners.
+- `server/tests/integration/search.routes.test.js` requires a migrated and seeded PostgreSQL database.
+- Run `npm run migrate`, `npm run seed:manual`, and `npm run seed:ailments` before the full backend suite.
+- Tests import `server/index.js` without starting the HTTP listener; Supertest drives the Express app directly.
 
-## Manual smoke test checklist
+Manual smoke checklist:
 
-1. Start backend and verify `GET /health`.
-2. Search from the landing page (e.g., `insomnia`).
-3. Confirm ranked results appear and each item includes `score`.
-4. Open a compound detail page and verify `ailments`, `evidence_tier`, and `source_url`.
-5. Verify route validations:
-	 - `GET /api/search` without `q` returns 400 with an error message.
-	 - `GET /api/compounds/abc` returns 400 for invalid ID.
+1. Open the landing page and search for `insomnia`.
+2. Confirm the search box stays a stable width for long query text.
+3. Confirm pages do not show extra side scrollbars.
+4. Sort results by relevance, evidence tier, and A-Z.
+5. Open a remedy detail page and verify source/evidence information.
+6. Register or log in, save a remedy, and verify it appears on the dashboard.
+7. Add a medication such as `Ibuprofen` or `Tylenol` from the dashboard.
+8. Open a remedy detail page and verify interaction messaging renders.
 
-## Design Decisions and Engineering Rationale
+## Design And Implementation Notes
 
-- Monorepo layout simplifies coordination across frontend and backend for a capstone-scale project.
-- Relational schema-first approach supports clear relationships and future contraindication logic.
-- Server-side ranking centralizes search logic and makes it reusable across clients.
-- Route-level validation and hardened middleware (`helmet`, `express-rate-limit`, `express-validator`) improve security and reliability.
+- Search scoring is centralized in `server/utils/search.js` so relevance behavior is testable without HTTP or DB concerns.
+- Route handlers validate IDs and query inputs before hitting the database.
+- Medication saves are transactional so a failed update does not partially clear a user's saved list.
+- The auth rate limiter is mounted directly on `/api/auth`.
+- Refresh tokens use opaque token families, single-use rotation, hashed storage, and family revocation when reuse is detected.
+- Frontend page components keep helpers local to avoid adding shared files unless the project needs them.
+- Tailwind utility classes are used consistently with the existing visual style.
 
-## Current Limitations
+## Known Limitations
 
-- The active UI does not yet include a full authentication flow; some middleware and JWT components exist server-side for planned auth.
-- No contraindication engine implemented yet.
-- Frontend UI automated tests are not present; backend tests are the primary automated coverage.
+- Frontend automated tests are not currently included.
+- Interaction data is curated and direct-edge based; it is not a substitute for medical advice.
+- External data scripts depend on third-party API availability and configured API keys.
 
-## Future Enhancements
+## Bug Notes
 
-- Add login and user profile management (complete auth flow, client & server integration).
-- Implement a contraindication/interaction engine using `interactions` and `medications` tables.
-- Add frontend automated tests (Cypress or React Testing Library) and expand backend edge-case tests.
-- Introduce pagination, filtering, and richer source citations.
-
-## Deployment Notes
-
-- Frontend set up for Vercel deployment; backend CORS allows `http://localhost:5173` and production frontend origins.
-- Use managed PostgreSQL and set `DATABASE_URL` securely in production.
-
-## Course Deliverable Alignment (CSS497)
-
-This repository demonstrates capstone outcomes through:
-
-- Requirements-driven feature implementation.
-- Full-stack integration and API contract design.
-- Database schema design and relationship modeling.
-- Search algorithm implementation and relevance tuning.
-- Deployment-aware configuration and runtime validation.
-- Clear technical documentation for reproducibility.
+See `BUG_FIXES.txt` for the resolved bug-list items from the cleanup pass.

@@ -214,6 +214,7 @@ export default function RemedyDetail() {
                 <div className="mt-8 rounded-[2rem] border border-[#E9E4D8] bg-[#F9F6F0] p-4 text-sm text-[#3E5C4A]">
                     <p className="text-xs text-[#4E7A5E]">
                         <button 
+                            type="button"
                             onClick={() => navigate('/login')} 
                             className="font-medium underline decoration-[#A3B899] underline-offset-4 hover:text-[#1A3326]"
                         >
@@ -239,6 +240,7 @@ export default function RemedyDetail() {
                     <p className="text-xs text-[#4E7A5E]">
                         No medications saved.{' '}
                         <button
+                            type="button"
                             onClick={() => navigate('/dashboard')}
                             className="font-medium underline decoration-[#A3B899] underline-offset-4 hover:text-[#1A3326]"
                         >
@@ -343,16 +345,16 @@ export default function RemedyDetail() {
         <div className="min-h-screen overflow-x-hidden bg-[#F9F6F0] font-sans text-[#2C4C3B] selection:bg-[#4E7A5E] selection:text-white">
             <Nav />
 
-            <main className="mx-auto max-w-7xl px-6 py-12 sm:px-8 lg:py-16">
+            <main className="mx-auto w-full max-w-7xl px-6 py-12 sm:px-8 lg:py-16">
                 <div className="mx-auto max-w-5xl">
-                <button
-                    onClick={() => navigate(-1)}
-                    type="button"
-                    className="mb-6 inline-flex items-center text-sm font-medium text-[#4E7A5E] transition-colors hover:text-[#1A3326]"
-                >
-                    <ArrowRight className="mr-2 h-4 w-4 rotate-180" />
-                    Back to results
-                </button>
+                    <button
+                        onClick={() => navigate(-1)}
+                        type="button"
+                        className="mb-6 inline-flex items-center text-sm font-medium text-[#4E7A5E] transition-colors hover:text-[#1A3326]"
+                    >
+                        <ArrowRight className="mr-2 h-4 w-4 rotate-180" />
+                        Back to results
+                    </button>
 
                 <div className="rounded-[3rem] border border-[#E9E4D8] bg-white p-8 shadow-xl sm:p-10">
                     <div className="mx-auto max-w-3xl">
@@ -362,11 +364,11 @@ export default function RemedyDetail() {
                         </div>
 
                         <div className="mt-6 flex flex-col gap-4 border-b border-[#E9E4D8] pb-6 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                                <h1 className="text-4xl font-medium leading-tight text-[#1A3326] sm:text-5xl">
+                            <div className="min-w-0">
+                                <h1 className="break-words text-4xl font-medium leading-tight text-[#1A3326] sm:text-5xl">
                                     {compound.name}
                                 </h1>
-                                <p className="mt-3 text-sm font-medium uppercase tracking-wide text-[#4E7A5E]">
+                                <p className="mt-3 break-words text-sm font-medium uppercase tracking-wide text-[#4E7A5E]">
                                     {compound.category}
                                 </p>
                             </div>
@@ -374,6 +376,7 @@ export default function RemedyDetail() {
                                 Tier {evidenceTier}
                             </span>
                             <button
+                                type="button"
                                 onClick={toggleBookmark}
                                 disabled={bookmarkLoading}
                                 title={bookmarked ? 'Remove bookmark' : 'Save remedy'}
@@ -394,7 +397,7 @@ export default function RemedyDetail() {
                                     <h2 className="text-sm font-medium uppercase tracking-wide text-[#4E7A5E] mb-3">
                                         About
                                     </h2>
-                                    <p className="leading-relaxed text-[#3E5C4A]">
+                                    <p className="break-words leading-relaxed text-[#3E5C4A]">
                                         {compound.description}
                                     </p>
                                 </section>

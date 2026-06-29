@@ -62,9 +62,9 @@ export default function Landing() {
                         <div className="mx-auto mt-8 mb-4 max-w-2xl">
                             <form
                                 onSubmit={handleSearch}
-                                className="flex items-center rounded-full border border-[#E9E4D8] bg-white p-2 shadow-lg transition-all focus-within:ring-4 focus-within:ring-[#4E7A5E]/20"
+                                className="flex w-full min-w-0 items-center rounded-full border border-[#E9E4D8] bg-white p-2 shadow-lg transition-all focus-within:ring-4 focus-within:ring-[#4E7A5E]/20"
                             >
-                                <div className="pl-4 pr-3 text-[#4E7A5E]">
+                                <div className="shrink-0 pl-4 pr-3 text-[#4E7A5E]">
                                     <Search className="h-6 w-6" />
                                 </div>
                                 <input
@@ -73,11 +73,11 @@ export default function Landing() {
                                     onChange={(event) => setQuery(event.target.value)}
                                     placeholder="Search by condition, herb, or compound..."
                                     aria-label="Search by condition, herb, or compound"
-                                    className="flex-1 border-none bg-transparent py-3 text-lg text-[#1A3326] outline-none placeholder:text-[#A3B899]"
+                                    className="min-w-0 flex-1 border-none bg-transparent py-3 text-lg text-[#1A3326] outline-none placeholder:text-[#A3B899]"
                                 />
                                 <button
                                     type="submit"
-                                    className="rounded-full bg-[#4E7A5E] px-8 py-3 font-medium text-[#F9F6F0] transition-colors hover:bg-[#3E5C4A]"
+                                    className="shrink-0 rounded-full bg-[#4E7A5E] px-8 py-3 font-medium text-[#F9F6F0] transition-colors hover:bg-[#3E5C4A]"
                                 >
                                     Search
                                 </button>

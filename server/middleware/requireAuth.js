@@ -10,7 +10,10 @@ function requireAuth(req, res, next) {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'Authorization token required' });
+        return res.status(401).json({
+            error: 'Authorization token required',
+            code: 'AUTH_TOKEN_MISSING'
+        });
     }
 
     const token = authHeader.split(' ')[1];
@@ -25,8 +28,18 @@ function requireAuth(req, res, next) {
         req.user = decoded;
         next();
     } catch (err) {
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({
+                error: 'Access token expired',
+                code: 'TOKEN_EXPIRED'
+            });
+        }
+
         console.warn('Token verification failed', err.message);
-        return res.status(401).json({ error: 'Invalid or expired token' });
+        return res.status(401).json({
+            error: 'Invalid access token',
+            code: 'TOKEN_INVALID'
+        });
     }
 }
 

@@ -15,16 +15,49 @@ const pool = require('../db/index');
 
 const SELECT_COMPOUNDS_SQL = 'SELECT id, name FROM compounds';
 const UPSERT_MEDICATION_SQL = `
-    INSERT INTO medications (name)
-    VALUES ($1)
-    ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+    INSERT INTO medications (name, common_name)
+    VALUES ($1, $2)
+    ON CONFLICT (name) DO UPDATE SET
+        name = EXCLUDED.name,
+        common_name = COALESCE(EXCLUDED.common_name, medications.common_name)
     RETURNING id
 `;
 const INSERT_INTERACTION_SQL = `
     INSERT INTO interactions (compound_id, medication_id, severity, description)
-    VALUES ($1, $2, $3, $4)
-    ON CONFLICT DO NOTHING
+    SELECT $1, $2, $3, $4
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM interactions
+        WHERE compound_id = $1
+            AND medication_id = $2
+    )
 `;
+
+const COMMON_MEDICATIONS = [
+    { name: 'Acetaminophen', common_name: 'Tylenol' },
+    { name: 'Ibuprofen', common_name: 'Advil, Motrin' },
+    { name: 'Naproxen', common_name: 'Aleve' },
+    { name: 'Aspirin', common_name: 'Bayer' },
+    { name: 'Diphenhydramine', common_name: 'Benadryl' },
+    { name: 'Loratadine', common_name: 'Claritin' },
+    { name: 'Cetirizine', common_name: 'Zyrtec' },
+    { name: 'Omeprazole', common_name: 'Prilosec' },
+    { name: 'Famotidine', common_name: 'Pepcid' },
+    { name: 'Metformin', common_name: 'Glucophage' },
+    { name: 'Lisinopril', common_name: 'Zestril' },
+    { name: 'Atorvastatin', common_name: 'Lipitor' },
+    { name: 'Warfarin', common_name: 'Coumadin' },
+    { name: 'Sertraline', common_name: 'Zoloft' },
+    { name: 'Fluoxetine', common_name: 'Prozac' },
+    { name: 'Birth Control', common_name: 'Oral contraceptives' },
+    { name: 'Blood Thinners', common_name: 'Anticoagulants' },
+    { name: 'Sedatives', common_name: 'Sleep medications' },
+    { name: 'Antibiotics', common_name: null },
+    { name: 'Diuretics', common_name: 'Water pills' },
+    { name: 'Immunosuppressants', common_name: null },
+    { name: 'Statins', common_name: 'Cholesterol medications' },
+    { name: 'MAO Inhibitors', common_name: 'MAOIs' }
+];
 
 const INTERACTIONS = [
     { compound: 'St. Johns Wort', medication: 'Warfarin', severity: 3, description: 'St. Johns Wort significantly reduces warfarin effectiveness, increasing risk of blood clots.' },
@@ -64,16 +97,22 @@ async function buildCompoundLookup() {
     return lookup;
 }
 
-async function getMedicationId(medicationName, medicationCache) {
+async function getMedicationId(medicationName, medicationCache, commonName = null) {
     const cacheKey = normalizeName(medicationName);
     if (medicationCache.has(cacheKey)) {
         return medicationCache.get(cacheKey);
     }
 
-    const medicationResult = await pool.query(UPSERT_MEDICATION_SQL, [medicationName]);
+    const medicationResult = await pool.query(UPSERT_MEDICATION_SQL, [medicationName, commonName]);
     const medicationId = medicationResult.rows[0].id;
     medicationCache.set(cacheKey, medicationId);
     return medicationId;
+}
+
+async function seedMedicationCatalog(medicationCache) {
+    for (const medication of COMMON_MEDICATIONS) {
+        await getMedicationId(medication.name, medicationCache, medication.common_name);
+    }
 }
 
 async function fetchNCCIH() {
@@ -81,6 +120,7 @@ async function fetchNCCIH() {
 
     const compoundLookup = await buildCompoundLookup();
     const medicationCache = new Map();
+    await seedMedicationCatalog(medicationCache);
 
     for (const interaction of INTERACTIONS) {
         const compoundId = compoundLookup.get(normalizeName(interaction.compound));
@@ -94,7 +134,7 @@ async function fetchNCCIH() {
 
         await pool.query(INSERT_INTERACTION_SQL, [compoundId, medicationId, interaction.severity, interaction.description]);
 
-        console.log(`[${new Date().toISOString()}] Inserted: ${interaction.compound} → ${interaction.medication} (severity ${interaction.severity})`);
+        console.log(`[${new Date().toISOString()}] Inserted: ${interaction.compound} -> ${interaction.medication} (severity ${interaction.severity})`);
     }
 
     const count = await pool.query(`SELECT COUNT(*) FROM interactions`);

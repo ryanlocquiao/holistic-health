@@ -3,14 +3,31 @@ const router = express.Router();
 const pool = require('../db/index');
 const requireAuth = require('../middleware/requireAuth');
 
+/**
+ * Bookmark routes.
+ *
+ * Endpoints:
+ * - GET /api/bookmarks: list the authenticated user's saved compounds.
+ * - POST /api/bookmarks: save a compound by ID.
+ * - DELETE /api/bookmarks/:compoundId: remove a saved compound.
+ *
+ * Run/test:
+ * - Start API with `npm start`.
+ * - Log in through the UI and save/remove a remedy from its detail page.
+ */
+
+function parsePositiveInteger(value) {
+    const parsedValue = Number(value);
+    if (!Number.isInteger(parsedValue) || parsedValue <= 0) return null;
+    return parsedValue;
+}
+
 // Can only access bookmarks if user has an account
 router.use(requireAuth);
 
 // GET /api/bookmarks
 router.get('/', async (req, res) => {
     try {
-        // For now, we order by timestamp
-        // TODO: Have button to sort through bookmarks
         const result = await pool.query(
             `SELECT c.id, c.name, c.category, c.description, c.evidence_tier, c.source_url, b.created_at AS bookmarked_at 
             FROM bookmarks b
@@ -28,8 +45,8 @@ router.get('/', async (req, res) => {
 
 // POST /api/bookmarks
 router.post('/', async (req, res) => {
-    const compoundId = parseInt(req.body.compoundId, 10);
-    if (!compoundId || compoundId <= 0) {
+    const compoundId = parsePositiveInteger(req.body.compoundId);
+    if (!compoundId) {
         return res.status(400).json({ error: 'Valid compoundId required' });
     }
 
@@ -52,8 +69,8 @@ router.post('/', async (req, res) => {
 
 // DELETE /api/bookmarks/:compoundId
 router.delete('/:compoundId', async (req, res) => {
-    const compoundId = parseInt(req.params.compoundId, 10);
-    if (!compoundId || compoundId <= 0) {
+    const compoundId = parsePositiveInteger(req.params.compoundId);
+    if (!compoundId) {
         return res.status(400).json({ error: 'Valid compoundId required' });
     }
 

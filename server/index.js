@@ -4,8 +4,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
-// TODO: Edit README to update package dependencies [helmet, express-rate-limit]
-
 /**
  * Server bootstrap
  *
@@ -18,7 +16,7 @@ const pool = require('./db/index');
 
 const searchRoutes = require('./routes/search');
 const compoundRoutes = require('./routes/compounds');
-const bookmarkRoutes = require('./routes/bookmarks')
+const bookmarkRoutes = require('./routes/bookmarks');
 const interactionRoutes = require('./routes/interactions');
 const medicationRoutes = require('./routes/medications');
 const authRoutes = require('./routes/auth');
@@ -71,9 +69,8 @@ app.use('/api/compounds', compoundRoutes);
 app.use('/api/bookmarks', bookmarkRoutes);
 app.use('/api/interactions', interactionRoutes);
 app.use('/api/medications', medicationRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/users', authLimiter);
 
 // Test DB connection on startup
 async function testDbConnection() {

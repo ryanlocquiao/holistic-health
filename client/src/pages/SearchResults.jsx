@@ -119,7 +119,7 @@ export default function SearchResults() {
         <div className="relative min-h-screen w-full bg-[#F9F6F0] font-sans flex flex-col">
             <Nav />
 
-            <main className="mx-auto max-w-7xl px-6 py-12 sm:px-8 lg:py-16">
+            <main className="mx-auto w-full max-w-7xl px-6 py-12 sm:px-8 lg:py-16">
                 <div className="mx-auto max-w-5xl">
                     <button
                         onClick={() => navigate('/')}
@@ -133,7 +133,7 @@ export default function SearchResults() {
                     <section className="rounded-[3rem] border border-[#E9E4D8] bg-white p-8 shadow-xl sm:p-10">
                         <div className="mx-auto max-w-3xl text-center">
                             <h2 className="mt-6 text-4xl font-medium leading-tight text-[#1A3326] sm:text-5xl">
-                                Results for <span className="italic text-[#4E7A5E]">{query || 'your search'}</span>
+                                Results for <span className="break-words italic text-[#4E7A5E]">{query || 'your search'}</span>
                             </h2>
                             <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-[#3E5C4A]">
                                 {loading ? 'Searching for evidence-based remedies...' : `${results.length} compounds found`}
@@ -141,9 +141,9 @@ export default function SearchResults() {
 
                             <form
                                 onSubmit={handleSearchSubmit}
-                                className="mx-auto mt-8 flex max-w-2xl items-center rounded-full border border-[#E9E4D8] bg-[#F9F6F0] p-2 shadow-sm focus-within:ring-4 focus-within:ring-[#4E7A5E]/20"
+                                className="mx-auto mt-8 flex w-full min-w-0 max-w-2xl items-center rounded-full border border-[#E9E4D8] bg-[#F9F6F0] p-2 shadow-sm focus-within:ring-4 focus-within:ring-[#4E7A5E]/20"
                             >
-                                <div className="pl-4 pr-3 text-[#4E7A5E]">
+                                <div className="shrink-0 pl-4 pr-3 text-[#4E7A5E]">
                                     <Search className="h-5 w-5" />
                                 </div>
                                 <input
@@ -152,11 +152,11 @@ export default function SearchResults() {
                                     onChange={(event) => setSearchInput(event.target.value)}
                                     placeholder="Search by symptom, herb, or compound..."
                                     aria-label="Run another search"
-                                    className="flex-1 border-none bg-transparent py-2.5 text-base text-[#1A3326] outline-none placeholder:text-[#A3B899]"
+                                    className="min-w-0 flex-1 border-none bg-transparent py-2.5 text-base text-[#1A3326] outline-none placeholder:text-[#A3B899]"
                                 />
                                 <button
                                     type="submit"
-                                    className="rounded-full bg-[#4E7A5E] px-6 py-2.5 text-sm font-medium text-[#F9F6F0] transition-colors hover:bg-[#3E5C4A]"
+                                    className="shrink-0 rounded-full bg-[#4E7A5E] px-6 py-2.5 text-sm font-medium text-[#F9F6F0] transition-colors hover:bg-[#3E5C4A]"
                                 >
                                     Search
                                 </button>
@@ -202,15 +202,15 @@ export default function SearchResults() {
                                         }
                                     }}
                                     aria-label={`Open details for ${compound.name}`}
-                                    className="group cursor-pointer rounded-[2rem] border border-[#E9E4D8] bg-[#F9F6F0] p-6 text-[#2C4C3B] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                                    className="group min-w-0 cursor-pointer rounded-[2rem] border border-[#E9E4D8] bg-[#F9F6F0] p-6 text-[#2C4C3B] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
                                 >
                                     <div className="flex items-start justify-between gap-4">
-                                        <div>
+                                        <div className="min-w-0">
                                             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white transition-colors group-hover:bg-[#EEF4EF]">
                                                 <Leaf className="h-5 w-5 text-[#4E7A5E] transition-colors" />
                                             </div>
-                                            <h3 className="text-2xl font-serif font-medium text-[#1A3326]">{compound.name}</h3>
-                                            <p className="mt-2 text-sm text-[#3E5C4A]">{compound.category}</p>
+                                            <h3 className="break-words font-serif text-2xl font-medium text-[#1A3326]">{compound.name}</h3>
+                                            <p className="mt-2 break-words text-sm text-[#3E5C4A]">{compound.category}</p>
                                         </div>
 
                                         <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${TIER_COLOR[compound.evidence_tier] || TIER_COLOR[3]}`}>

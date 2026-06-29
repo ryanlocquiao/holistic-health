@@ -1,27 +1,58 @@
-import { useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Bookmark, Pill, Leaf, Search, ArrowRight, Plus, X, CheckCircle, AlertCircle } from 'lucide-react'
-import Nav from '../components/Nav'
+import Nav from '../components/Nav.jsx'
 
+const API_URL = import.meta.env.VITE_API_URL
+const TOAST_TIMEOUT_MS = 3000
+const MEDICATION_RESULT_LIMIT = 8
+
+function readStoredUser() {
+    const storedUser = localStorage.getItem('user')
+
+    if (!storedUser) return null
+
+    try {
+        return JSON.parse(storedUser)
+    } catch {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        return null
+    }
+}
+
+/**
+ * Authenticated user dashboard.
+ *
+ * Responsibilities:
+ * - Loads the current user from localStorage and redirects anonymous users.
+ * - Shows saved remedies returned by the bookmarks API.
+ * - Lets users maintain a saved medication list for interaction checks.
+ *
+ * Run/test:
+ * - Start API with `cd server && npm start`.
+ * - Start UI with `cd client && npm run dev`.
+ * - Log in, open `/dashboard`, add/remove medications, and verify toasts.
+ * - Use `/dashboard?admin=true` for a no-token visual smoke test.
+ */
 export default function Dashboard() {
-    const [user, setUser]                     = useState(null)
-    const [loading, setLoading]               = useState(true)
-    const [bookmarks, setBookmarks]           = useState([])
+    const [user, setUser] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [bookmarks, setBookmarks] = useState([])
     const [bookmarksLoading, setBookmarksLoading] = useState(true)
 
-    const [medCatalog, setMedCatalog]         = useState([])
-    const [savedMeds, setSavedMeds]           = useState([])
-    const [medsLoading, setMedsLoading]       = useState(true)
-    const [medsSaving, setMedsSaving]         = useState(false)
-    const [medQuery, setMedQuery]             = useState('')
-    const [dropdownOpen, setDropdownOpen]     = useState(false)
-    const [toast, setToast]                   = useState(null)
-    const searchRef                           = useRef(null)
-    const dropdownRef                         = useRef(null)
+    const [medCatalog, setMedCatalog] = useState([])
+    const [savedMeds, setSavedMeds] = useState([])
+    const [medsLoading, setMedsLoading] = useState(true)
+    const [medsSaving, setMedsSaving] = useState(false)
+    const [medQuery, setMedQuery] = useState('')
+    const [dropdownOpen, setDropdownOpen] = useState(false)
+    const [toast, setToast] = useState(null)
+    const searchRef = useRef(null)
+    const dropdownRef = useRef(null)
 
-    const navigate  = useNavigate()
-    const location  = useLocation()
-    const API       = import.meta.env.VITE_API_URL
+    const navigate = useNavigate()
+    const location = useLocation()
 
     useEffect(() => {
         const params  = new URLSearchParams(location.search)
@@ -33,25 +64,34 @@ export default function Dashboard() {
             return
         }
 
-        const token      = localStorage.getItem('token')
-        const storedUser = localStorage.getItem('user')
+        const token = localStorage.getItem('token')
+        const storedUser = readStoredUser()
 
         if (!token || !storedUser) {
             navigate('/login')
             return
         }
 
-        setUser(JSON.parse(storedUser))
+        setUser(storedUser)
         setLoading(false)
     }, [navigate, location.search])
 
+    const showToast = useCallback((type, msg) => {
+        setToast({ type, msg })
+        window.setTimeout(() => setToast(null), TOAST_TIMEOUT_MS)
+    }, [])
+
     useEffect(() => {
         const token = localStorage.getItem('token')
-        if (!token) return
+        if (!token) {
+            setBookmarks([])
+            setBookmarksLoading(false)
+            return
+        }
 
         async function fetchBookmarks() {
             try {
-                const res = await fetch(`${API}/api/bookmarks`, {
+                const res = await fetch(`${API_URL}/api/bookmarks`, {
                     headers: { Authorization: `Bearer ${token}` }
                 })
                 if (!res.ok) return
@@ -68,14 +108,19 @@ export default function Dashboard() {
 
     useEffect(() => {
         const token = localStorage.getItem('token')
-        if (!token) return
+        if (!token) {
+            setMedCatalog([])
+            setSavedMeds([])
+            setMedsLoading(false)
+            return
+        }
 
         async function fetchMedications() {
             setMedsLoading(true)
             try {
                 const [catRes, savedRes] = await Promise.all([
-                    fetch(`${API}/api/medications`),
-                    fetch(`${API}/api/medications/mine`, {
+                    fetch(`${API_URL}/api/medications`),
+                    fetch(`${API_URL}/api/medications/mine`, {
                         headers: { Authorization: `Bearer ${token}` }
                     })
                 ])
@@ -89,7 +134,7 @@ export default function Dashboard() {
         }
 
         fetchMedications()
-    }, [])
+    }, [showToast])
 
     useEffect(() => {
         function handleClick(e) {
@@ -102,26 +147,30 @@ export default function Dashboard() {
         return () => document.removeEventListener('mousedown', handleClick)
     }, [])
 
-    function showToast(type, msg) {
-        setToast({ type, msg })
-        setTimeout(() => setToast(null), 3000)
-    }
-
     function handleLogout() {
         localStorage.removeItem('token')
+        localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
         navigate('/')
     }
 
-    const savedMedIds = new Set(savedMeds.map(m => m.id))
+    const savedMedIds = useMemo(
+        () => new Set(savedMeds.map((medication) => medication.id)),
+        [savedMeds]
+    )
 
-    const filteredMeds = medQuery.trim().length > 0
-        ? medCatalog.filter(m =>
-            !savedMedIds.has(m.id) &&
-            (m.name.toLowerCase().includes(medQuery.toLowerCase()) ||
-             (m.common_name || '').toLowerCase().includes(medQuery.toLowerCase()))
-          )
-        : []
+    const normalizedMedQuery = medQuery.trim().toLowerCase()
+    const filteredMeds = useMemo(() => {
+        if (!normalizedMedQuery) return []
+
+        return medCatalog.filter((medication) => (
+            !savedMedIds.has(medication.id) &&
+            (
+                medication.name.toLowerCase().includes(normalizedMedQuery) ||
+                (medication.common_name || '').toLowerCase().includes(normalizedMedQuery)
+            )
+        ))
+    }, [medCatalog, normalizedMedQuery, savedMedIds])
 
     async function addMedication(med) {
         const next = [...savedMeds, med]
@@ -141,7 +190,7 @@ export default function Dashboard() {
         const token = localStorage.getItem('token')
         setMedsSaving(true)
         try {
-            const res = await fetch(`${API}/api/medications/mine`, {
+            const res = await fetch(`${API_URL}/api/medications/mine`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -189,29 +238,36 @@ export default function Dashboard() {
                             <p className="text-[#A3B899] text-sm mb-10">{user?.email}</p>
 
                             <div className="space-y-3">
-                                <button className="w-full flex items-center justify-between p-4 rounded-xl bg-[#2C4C3B] text-white font-medium text-sm border border-transparent hover:border-[#4E7A5E] transition-all">
+                                <button
+                                    type="button"
+                                    className="w-full flex items-center justify-between p-4 rounded-xl bg-[#2C4C3B] text-white font-medium text-sm border border-transparent hover:border-[#4E7A5E] transition-all"
+                                >
                                     <span className="flex items-center">
                                         <Bookmark className="w-4 h-4 mr-3 text-[#A3B899]" />
                                         Saved Remedies
                                     </span>
                                     <span className="bg-[#1A3326] px-2.5 py-1 rounded-md text-xs text-[#A3B899]">
-                                        {bookmarksLoading ? '—' : bookmarks.length}
+                                        {bookmarksLoading ? '-' : bookmarks.length}
                                     </span>
                                 </button>
 
-                                <button className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-[#2C4C3B] text-[#A3B899] font-medium text-sm transition-all border border-transparent hover:border-[#4E7A5E]">
+                                <button
+                                    type="button"
+                                    className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-[#2C4C3B] text-[#A3B899] font-medium text-sm transition-all border border-transparent hover:border-[#4E7A5E]"
+                                >
                                     <span className="flex items-center">
                                         <Pill className="w-4 h-4 mr-3" />
                                         Medications
                                     </span>
                                     <span className="bg-transparent px-2.5 py-1 rounded-md text-xs">
-                                        {medsLoading ? '—' : savedMeds.length}
+                                        {medsLoading ? '-' : savedMeds.length}
                                     </span>
                                 </button>
                             </div>
 
                             <div className="md:hidden mt-8 pt-6 border-t border-[#2C4C3B]">
                                 <button
+                                    type="button"
                                     onClick={handleLogout}
                                     className="w-full text-center text-sm font-medium text-[#A3B899] hover:text-white transition-colors"
                                 >
@@ -247,6 +303,7 @@ export default function Dashboard() {
                                         Discover natural alternatives and bookmark them to build your personal holistic library.
                                     </p>
                                     <button
+                                        type="button"
                                         onClick={() => navigate('/')}
                                         className="text-sm font-medium bg-[#4E7A5E] text-white px-6 py-2.5 rounded-full hover:bg-[#3E5C4A] transition-colors flex items-center shadow-md"
                                     >
@@ -258,6 +315,7 @@ export default function Dashboard() {
                                     {bookmarks.map(b => (
                                         <button
                                             key={b.id}
+                                            type="button"
                                             onClick={() => navigate(`/remedy/${b.id}`)}
                                             className="w-full flex items-center justify-between p-4 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all text-left group"
                                         >
@@ -281,7 +339,7 @@ export default function Dashboard() {
                                     My Medications
                                 </h2>
                                 {medsSaving && (
-                                    <span className="text-xs text-[#4E7A5E] animate-pulse">Saving…</span>
+                                    <span className="text-xs text-[#4E7A5E] animate-pulse">Saving...</span>
                                 )}
                             </div>
 
@@ -300,24 +358,28 @@ export default function Dashboard() {
                             <div className="relative mb-4">
                                 <div
                                     ref={searchRef}
-                                    className="flex items-center gap-2 rounded-xl border border-[#D7E2D8] bg-white px-3 py-2.5
+                                    className="flex min-w-0 items-center gap-2 rounded-xl border border-[#D7E2D8] bg-white px-3 py-2.5
                                                focus-within:border-[#4E7A5E] focus-within:ring-1 focus-within:ring-[#4E7A5E] transition-all"
                                 >
                                     <Search className="h-4 w-4 shrink-0 text-[#4E7A5E]" />
                                     <input
                                         type="text"
-                                        placeholder="Search medications to add…"
+                                        placeholder="Search medications to add..."
                                         value={medQuery}
-                                        onChange={e => {
-                                            setMedQuery(e.target.value)
-                                            setDropdownOpen(e.target.value.trim().length > 0)
+                                        onChange={(event) => {
+                                            setMedQuery(event.target.value)
+                                            setDropdownOpen(event.target.value.trim().length > 0)
                                         }}
                                         onFocus={() => medQuery.trim().length > 0 && setDropdownOpen(true)}
-                                        className="flex-1 bg-transparent text-sm text-[#2C4C3B] placeholder-[#A3B899] outline-none"
+                                        className="min-w-0 flex-1 bg-transparent text-sm text-[#2C4C3B] placeholder-[#A3B899] outline-none"
                                     />
                                     {medQuery && (
                                         <button
-                                            onClick={() => { setMedQuery(''); setDropdownOpen(false) }}
+                                            type="button"
+                                            onClick={() => {
+                                                setMedQuery('')
+                                                setDropdownOpen(false)
+                                            }}
                                             className="text-[#A3B899] hover:text-[#4E7A5E] transition-colors"
                                         >
                                             <X className="h-4 w-4" />
@@ -335,9 +397,10 @@ export default function Dashboard() {
                                                 No results for "{medQuery}"
                                             </li>
                                         ) : (
-                                            filteredMeds.slice(0, 8).map(med => (
+                                            filteredMeds.slice(0, MEDICATION_RESULT_LIMIT).map(med => (
                                                 <li key={med.id}>
                                                     <button
+                                                        type="button"
                                                         onClick={() => addMedication(med)}
                                                         className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-[#F9F6F0] transition-colors group"
                                                     >
@@ -381,6 +444,7 @@ export default function Dashboard() {
                                                 )}
                                             </div>
                                             <button
+                                                type="button"
                                                 onClick={() => removeMedication(med.id)}
                                                 title="Remove"
                                                 className="ml-3 rounded-full p-1.5 text-[#A3B899] hover:bg-red-50 hover:text-red-500 transition-colors shrink-0"
@@ -391,7 +455,7 @@ export default function Dashboard() {
                                     ))}
                                     <p className="pt-1 text-xs text-[#A3B899]">
                                         {savedMeds.length} medication{savedMeds.length !== 1 ? 's' : ''} saved
-                                        {' '}— checked against all remedy interactions.
+                                        {' '}- checked against all remedy interactions.
                                     </p>
                                 </div>
                             )}
