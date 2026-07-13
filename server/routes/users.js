@@ -2,13 +2,14 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/index');
 const requireAuth = require('../middleware/requireAuth');
+const { authenticatedLimiter } = require('../middleware/rateLimiters');
 
 /**
  * GET /api/users/me
  *
  * Returns the authenticated user's public profile (id, email, created_at).
  */
-router.get('/me', requireAuth, async (req, res) => {
+router.get('/me', requireAuth, authenticatedLimiter, async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT id, email, created_at FROM users WHERE id = $1`,

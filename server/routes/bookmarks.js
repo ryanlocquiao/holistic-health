@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/index');
 const requireAuth = require('../middleware/requireAuth');
+const { authenticatedLimiter } = require('../middleware/rateLimiters');
 
 /**
  * Bookmark routes.
@@ -23,7 +24,7 @@ function parsePositiveInteger(value) {
 }
 
 // Can only access bookmarks if user has an account
-router.use(requireAuth);
+router.use(requireAuth, authenticatedLimiter);
 
 // GET /api/bookmarks
 router.get('/', async (req, res) => {

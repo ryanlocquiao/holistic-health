@@ -1,7 +1,8 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const db = require('../db');
+const db = require('../db/index');
 const requireAuth = require('../middleware/requireAuth');
+const { authenticatedLimiter } = require('../middleware/rateLimiters');
 
 const router = express.Router();
 
@@ -60,7 +61,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/medications/mine
-router.get('/mine', requireAuth, async (req, res) => {
+router.get('/mine', requireAuth, authenticatedLimiter, async (req, res) => {
     try {
         const { rows } = await db.query(SELECT_USER_MEDICATIONS_SQL, [req.user.userId]);
         return res.json(rows);
@@ -71,7 +72,7 @@ router.get('/mine', requireAuth, async (req, res) => {
 });
 
 // POST /api/medications/mine
-router.post('/mine', requireAuth, [
+router.post('/mine', requireAuth, authenticatedLimiter, [
     body('medication_ids')
         .isArray()
         .withMessage('medication_ids must be an array.'),

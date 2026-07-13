@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
+const { authLimiter } = require('./middleware/rateLimiters');
 
 /**
  * Server bootstrap
@@ -13,6 +13,7 @@ const rateLimit = require('express-rate-limit');
 const app = express();
 const PORT = process.env.PORT || 8080;
 const pool = require('./db/index');
+app.set('trust proxy', 1);  // For Render proxy
 
 const searchRoutes = require('./routes/search');
 const compoundRoutes = require('./routes/compounds');
@@ -38,14 +39,6 @@ const allowedOrigins = [
     'https://my-holistic-health.vercel.app',
     'https://holistic-health-api.onrender.com'
 ];
-
-const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 15,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'Too many requests, please try again later.' }
-});
 
 // Allow a single client origin override from environment for local/test overrides
 if (process.env.CLIENT_URL) allowedOrigins.unshift(process.env.CLIENT_URL);
