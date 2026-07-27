@@ -46,7 +46,7 @@ function buildInsertUserMedicationsSql(medicationCount) {
         (_, index) => `($1, $${index + 2})`
     ).join(', ');
 
-    return `INSERT INTO user_medications (user_id, medication_id) VALUES ${values}`;
+    return `INSERT INTO user_medications (user_id, medication_id) VALUES ${values} ON CONFLICT DO NOTHING`;
 }
 
 // GET /api/medications

@@ -7,6 +7,16 @@ const API_URL = import.meta.env.VITE_API_URL
 const TOAST_TIMEOUT_MS = 3000
 const MEDICATION_RESULT_LIMIT = 8
 
+function getStoredToken() {
+    return localStorage.getItem('token')
+}
+
+/**
+ * Reads the persisted auth user defensively.
+ *
+ * If localStorage contains malformed JSON, auth state is cleared so the app can
+ * send the user back through login instead of repeatedly failing dashboard load.
+ */
 function readStoredUser() {
     const storedUser = localStorage.getItem('user')
 
@@ -18,6 +28,14 @@ function readStoredUser() {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
         return null
+    }
+}
+
+async function parseJsonSafely(response) {
+    try {
+        return await response.json()
+    } catch {
+        return {}
     }
 }
 
@@ -54,6 +72,83 @@ export default function Dashboard() {
     const navigate = useNavigate()
     const location = useLocation()
 
+    const showToast = useCallback((type, msg) => {
+        setToast({ type, msg })
+        window.setTimeout(() => setToast(null), TOAST_TIMEOUT_MS)
+    }, [])
+
+    /**
+     * Exchanges a persisted refresh token for a new short-lived access token.
+     *
+     * This keeps medication saves working after the access token expires. The
+     * server rotates refresh tokens, so the replacement refresh token must be
+     * stored immediately when one is returned.
+     */
+    const refreshAccessToken = useCallback(async () => {
+        const refreshToken = localStorage.getItem('refreshToken')
+        if (!refreshToken) return null
+
+        try {
+            const res = await fetch(`${API_URL}/api/auth/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refreshToken })
+            })
+
+            if (!res.ok) return null
+
+            const data = await parseJsonSafely(res)
+            const nextAccessToken = data.accessToken || data.token
+
+            if (!nextAccessToken) return null
+
+            localStorage.setItem('token', nextAccessToken)
+            if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken)
+            if (data.user) {
+                localStorage.setItem('user', JSON.stringify(data.user))
+                setUser(data.user)
+            }
+
+            return nextAccessToken
+        } catch {
+            return null
+        }
+    }, [])
+
+    /**
+     * Performs an authenticated request and retries once for TOKEN_EXPIRED.
+     *
+     * Run/test:
+     * - Log in, force an expired access token in localStorage, keep a valid
+     *   refresh token, then add a medication from the dashboard.
+     * - The request should refresh once and save without showing an error.
+     */
+    const fetchWithAuthRetry = useCallback(async (url, options = {}) => {
+        const token = getStoredToken()
+        const headers = {
+            ...(options.headers || {}),
+            Authorization: `Bearer ${token}`
+        }
+
+        const res = await fetch(url, { ...options, headers })
+
+        if (res.status !== 401) return res
+
+        const authError = await parseJsonSafely(res.clone())
+        if (authError.code !== 'TOKEN_EXPIRED') return res
+
+        const nextAccessToken = await refreshAccessToken()
+        if (!nextAccessToken) return res
+
+        return fetch(url, {
+            ...options,
+            headers: {
+                ...(options.headers || {}),
+                Authorization: `Bearer ${nextAccessToken}`
+            }
+        })
+    }, [refreshAccessToken])
+
     useEffect(() => {
         const params  = new URLSearchParams(location.search)
         const isAdmin = params.get('admin') === 'true'
@@ -64,7 +159,7 @@ export default function Dashboard() {
             return
         }
 
-        const token = localStorage.getItem('token')
+        const token = getStoredToken()
         const storedUser = readStoredUser()
 
         if (!token || !storedUser) {
@@ -76,13 +171,8 @@ export default function Dashboard() {
         setLoading(false)
     }, [navigate, location.search])
 
-    const showToast = useCallback((type, msg) => {
-        setToast({ type, msg })
-        window.setTimeout(() => setToast(null), TOAST_TIMEOUT_MS)
-    }, [])
-
     useEffect(() => {
-        const token = localStorage.getItem('token')
+        const token = getStoredToken()
         if (!token) {
             setBookmarks([])
             setBookmarksLoading(false)
@@ -91,9 +181,7 @@ export default function Dashboard() {
 
         async function fetchBookmarks() {
             try {
-                const res = await fetch(`${API_URL}/api/bookmarks`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                })
+                const res = await fetchWithAuthRetry(`${API_URL}/api/bookmarks`)
                 if (!res.ok) return
                 setBookmarks(await res.json())
             } catch {
@@ -104,10 +192,10 @@ export default function Dashboard() {
         }
 
         fetchBookmarks()
-    }, [])
+    }, [fetchWithAuthRetry])
 
     useEffect(() => {
-        const token = localStorage.getItem('token')
+        const token = getStoredToken()
         if (!token) {
             setMedCatalog([])
             setSavedMeds([])
@@ -120,9 +208,7 @@ export default function Dashboard() {
             try {
                 const [catRes, savedRes] = await Promise.all([
                     fetch(`${API_URL}/api/medications`),
-                    fetch(`${API_URL}/api/medications/mine`, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    })
+                    fetchWithAuthRetry(`${API_URL}/api/medications/mine`)
                 ])
                 if (catRes.ok)   setMedCatalog(await catRes.json())
                 if (savedRes.ok) setSavedMeds(await savedRes.json())
@@ -134,7 +220,7 @@ export default function Dashboard() {
         }
 
         fetchMedications()
-    }, [showToast])
+    }, [fetchWithAuthRetry, showToast])
 
     useEffect(() => {
         function handleClick(e) {
@@ -172,36 +258,61 @@ export default function Dashboard() {
         ))
     }, [medCatalog, normalizedMedQuery, savedMedIds])
 
-    async function addMedication(med) {
-        const next = [...savedMeds, med]
+    async function addMedication(medication) {
+        if (savedMedIds.has(medication.id)) {
+            setMedQuery('')
+            setDropdownOpen(false)
+            return
+        }
+
+        const previous = savedMeds
+        const next = [...savedMeds, medication]
         setSavedMeds(next)
         setMedQuery('')
         setDropdownOpen(false)
-        await syncMeds(next)
+
+        const saved = await syncMeds(next)
+        if (!saved) setSavedMeds(previous)
     }
 
     async function removeMedication(id) {
+        const previous = savedMeds
         const next = savedMeds.filter(m => m.id !== id)
         setSavedMeds(next)
-        await syncMeds(next)
+
+        const saved = await syncMeds(next)
+        if (!saved) setSavedMeds(previous)
     }
 
+    /**
+     * Persists the full selected medication list.
+     *
+     * Returns a boolean so optimistic UI updates can roll back immediately if
+     * the server rejects the save. This fixes the stale "saved until reload"
+     * behavior described in FIXES.md.
+     */
     async function syncMeds(list) {
-        const token = localStorage.getItem('token')
+        const token = getStoredToken()
+        if (!token) {
+            navigate('/login')
+            return false
+        }
+
         setMedsSaving(true)
         try {
-            const res = await fetch(`${API_URL}/api/medications/mine`, {
+            const res = await fetchWithAuthRetry(`${API_URL}/api/medications/mine`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ medication_ids: list.map(m => m.id) })
             })
             if (!res.ok) throw new Error()
             showToast('success', 'Medications updated.')
+            return true
         } catch {
             showToast('error', 'Failed to save. Please try again.')
+            return false
         } finally {
             setMedsSaving(false)
         }

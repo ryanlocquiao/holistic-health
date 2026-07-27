@@ -1,7 +1,39 @@
-import { ArrowRight, Heart, Leaf, Search } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Heart, Leaf, Search } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav.jsx'
+
+const ANONYMOUS_DISCLAIMER_STORAGE_KEY = 'holisticHealthAnonymousDisclaimerAcceptedAt'
+const AUTHENTICATED_DISCLAIMER_STORAGE_PREFIX = 'holisticHealthDisclaimerAccepted'
+const DISCLAIMER_INTERVAL_MS = 24 * 60 * 60 * 1000
+
+function readStoredUser() {
+    const storedUser = localStorage.getItem('user')
+
+    if (!storedUser) return null
+
+    try {
+        return JSON.parse(storedUser)
+    } catch {
+        return null
+    }
+}
+
+function getAuthenticatedDisclaimerKey(user) {
+    return `${AUTHENTICATED_DISCLAIMER_STORAGE_PREFIX}:${user?.id || user?.email || 'current'}`
+}
+
+function shouldShowDisclaimer(now = Date.now()) {
+    const token = localStorage.getItem('token')
+    const user = readStoredUser()
+
+    if (token && user) {
+        return localStorage.getItem(getAuthenticatedDisclaimerKey(user)) !== 'true'
+    }
+
+    const acceptedAt = Number(localStorage.getItem(ANONYMOUS_DISCLAIMER_STORAGE_KEY) || 0)
+    return !acceptedAt || now - acceptedAt >= DISCLAIMER_INTERVAL_MS
+}
 
 /**
  * Landing page for the remedy discovery workflow.
@@ -19,13 +51,29 @@ import Nav from '../components/Nav.jsx'
  * - Enter "insomnia" and submit.
  * - Verify navigation to /search?q=insomnia.
  * - Verify no navigation occurs for empty/whitespace input.
+ * - Anonymous users see the disclaimer again after 24 hours.
+ * - Logged-in users see the disclaimer once per stored user profile.
  */
 export default function Landing() {
     const [query, setQuery] = useState('')
+    const [showDisclaimer, setShowDisclaimer] = useState(() => shouldShowDisclaimer())
     const navigate = useNavigate()
 
     function normalizeQuery(value) {
         return value.trim()
+    }
+
+    function handleDisclaimerAccept() {
+        const token = localStorage.getItem('token')
+        const user = readStoredUser()
+
+        if (token && user) {
+            localStorage.setItem(getAuthenticatedDisclaimerKey(user), 'true')
+        } else {
+            localStorage.setItem(ANONYMOUS_DISCLAIMER_STORAGE_KEY, String(Date.now()))
+        }
+
+        setShowDisclaimer(false)
     }
 
     function handleSearch(event) {
@@ -45,6 +93,7 @@ export default function Landing() {
     return (
         <div className="relative min-h-screen w-full bg-[#F9F6F0] font-sans flex flex-col">
             <Nav />
+            <DisclaimerModal isOpen={showDisclaimer} onAccept={handleDisclaimerAccept} />
 
             <div className="animate-in fade-in pb-24 text-[#2C4C3B] duration-500">
                 <main className="relative mx-auto max-w-7xl overflow-hidden px-6 pt-12 sm:px-8">
@@ -101,6 +150,67 @@ export default function Landing() {
 
                 <DarkRemediesSection onExplore={openSearch} />
             </div>
+        </div>
+    )
+}
+
+/**
+ * Medical disclaimer shown from the landing page.
+ *
+ * Persistence behavior:
+ * - Anonymous visitors acknowledge for 24 hours.
+ * - Logged-in users acknowledge once per stored user profile.
+ *
+ * Run/test:
+ * - Clear `holisticHealthAnonymousDisclaimerAcceptedAt`, log out, and open `/`.
+ * - Click "I understand", reload, and confirm it stays dismissed.
+ * - Set the stored timestamp to more than 24 hours ago and confirm it returns.
+ * - Log in and confirm the per-user key stays permanently accepted.
+ */
+function DisclaimerModal({ isOpen, onAccept }) {
+    if (!isOpen) return null
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A3326]/70 px-6 py-8 backdrop-blur-sm">
+            <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="medical-disclaimer-title"
+                className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] border border-[#E9E4D8] bg-[#F9F6F0] p-6 text-[#2C4C3B] shadow-2xl sm:p-8"
+            >
+                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-[#1A3326]">
+                    <AlertTriangle className="h-5 w-5 text-[#A3B899]" />
+                </div>
+
+                <h2 id="medical-disclaimer-title" className="font-serif text-3xl font-medium text-[#1A3326]">
+                    Before you explore Holistic Health
+                </h2>
+
+                <div className="mt-5 space-y-4 text-sm leading-relaxed text-[#3E5C4A] sm:text-base">
+                    <p>
+                        Holistic Health provides general, educational information about natural remedies. It is not medical advice,
+                        and it is not a substitute for diagnosis, treatment, or guidance from a licensed physician, pharmacist, or
+                        other qualified healthcare provider.
+                    </p>
+                    <p>
+                        Natural compounds can still interact with medications, existing conditions, and each other. Always consult
+                        your doctor or pharmacist before starting, stopping, or combining any remedy - especially if you are pregnant,
+                        nursing, managing a chronic condition, or taking prescription medication.
+                    </p>
+                    <p>
+                        Holistic Health and its developers assume no liability for outcomes resulting from use of information on this
+                        platform. Use of this site is at your own discretion and risk.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    onClick={onAccept}
+                    className="mt-7 w-full rounded-full bg-[#4E7A5E] px-6 py-3 text-sm font-medium text-[#F9F6F0] transition-colors hover:bg-[#3E5C4A] sm:w-auto"
+                >
+                    I understand
+                </button>
+            </section>
         </div>
     )
 }

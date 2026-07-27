@@ -7,6 +7,7 @@
     "start": "node index.js",
     "migrate": "node db/migrate.js",
     "seed:usda": "node scripts/fetchUSDA.js",
+    "seed:openfda": "node scripts/fetchOpenFDA.js",
     "seed:manual": "node scripts/seedManual.js",
     "seed:ailments": "node scripts/seedAilments.js",
     "seed:all": "node scripts/runAllPipelines.js",

@@ -29,6 +29,26 @@ const TIER_COLOR = {
 }
 const DEFAULT_ERROR_MESSAGE = 'Something went wrong. Please try again.'
 const SORT_OPTIONS = ['relevance', 'tier', 'alpha']
+const TIER_INFO = [
+    {
+        tier: 1,
+        label: 'Tier 1',
+        description: 'Peer-reviewed research or stronger clinical/scientific evidence.',
+        color: TIER_COLOR[1]
+    },
+    {
+        tier: 2,
+        label: 'Tier 2',
+        description: 'Institutional, traditional, or moderate supporting evidence.',
+        color: TIER_COLOR[2]
+    },
+    {
+        tier: 3,
+        label: 'Tier 3',
+        description: 'Anecdotal, community, or limited early evidence.',
+        color: TIER_COLOR[3]
+    }
+]
 
 function getSortLabel(sortOption) {
     if (sortOption === 'tier') return 'Evidence tier'
@@ -175,6 +195,8 @@ export default function SearchResults() {
                                     </button>
                                 ))}
                             </div>
+
+                            <EvidenceTierLegend />
                         </div>
 
                         {error && (
@@ -232,5 +254,31 @@ export default function SearchResults() {
                 </div>
             </main>
         </div>
+    )
+}
+
+/**
+ * Explains evidence tier badges shown on search results.
+ *
+ * Keep this close to the page while the legend is only used here; if more
+ * pages need the same markup, it can graduate into a shared component later.
+ */
+function EvidenceTierLegend() {
+    return (
+        <section className="mx-auto mt-8 max-w-3xl border-y border-[#E9E4D8] py-5 text-left" aria-label="Evidence tier key">
+            <h3 className="text-xs font-medium uppercase tracking-wide text-[#4E7A5E]">
+                Evidence tier key
+            </h3>
+            <div className="mt-4 grid gap-4 text-sm text-[#3E5C4A] md:grid-cols-3">
+                {TIER_INFO.map((tier) => (
+                    <div key={tier.tier} className="min-w-0">
+                        <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-medium ${tier.color}`}>
+                            {tier.label}
+                        </span>
+                        <p className="mt-2 leading-relaxed">{tier.description}</p>
+                    </div>
+                ))}
+            </div>
+        </section>
     )
 }

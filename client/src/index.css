@@ -17,6 +17,17 @@
 html {
   min-height: 100%;
   overflow-x: hidden;
+  /*
+    Keep every page on the same horizontal alignment while preserving scroll.
+
+    Manual test:
+    - Open short pages such as login/register and long pages such as results.
+    - Verify the page can scroll when content overflows, but no side scrollbar
+      appears or changes the page width.
+  */
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  scrollbar-width: none;
 }
 
 body,
@@ -25,6 +36,13 @@ body,
 }
 
 body {
+  -ms-overflow-style: none;
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }

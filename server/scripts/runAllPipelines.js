@@ -3,6 +3,7 @@ const fetchUSDA = require('./fetchUSDA');
 const fetchPubMed = require('./fetchPubMed');
 const fetchNCCIH = require('./fetchNCCIH');
 const pool = require('../db/index');
+const fetchOpenFDA = require('./fetchOpenFDA');
 
 /**
  * Runs all ingestion pipelines together.
@@ -11,7 +12,7 @@ const pool = require('../db/index');
  * - node scripts/runAllPipelines.js
  *
  * What it does:
- * - Executes USDA, PubMed, and NCCIH ingestion work concurrently.
+ * - Executes USDA, PubMed, NCCIH and openFDA ingestion work concurrently.
  * - Measures total runtime for basic operational feedback.
  * - Closes the shared database pool once all work completes or fails.
  *
@@ -28,7 +29,8 @@ async function runAllPipelines() {
         await Promise.all([
             fetchUSDA(),
             fetchPubMed(),
-            fetchNCCIH()
+            fetchNCCIH(),
+            fetchOpenFDA()
         ]);
 
         const elapsed = ((Date.now() - start) / 1000).toFixed(2);
