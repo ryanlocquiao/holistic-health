@@ -72,9 +72,11 @@ CREATE TABLE IF NOT EXISTS compound_ailments (
 );
 
 -- User Medications:
+-- User-owned rows cascade when the user is deleted, but catalog rows are
+-- restricted so schema/catalog refreshes cannot silently erase dashboard data.
 CREATE TABLE IF NOT EXISTS user_medications (
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    medication_id INTEGER REFERENCES medications(id) ON DELETE CASCADE,
+    medication_id INTEGER REFERENCES medications(id) ON DELETE RESTRICT,
     PRIMARY KEY (user_id, medication_id)
 );
 
@@ -87,14 +89,65 @@ CREATE TABLE IF NOT EXISTS interactions (
     description TEXT
 );
 
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'uq_interactions_compound_medication'
+    ) THEN
+        ALTER TABLE interactions
+            ADD CONSTRAINT uq_interactions_compound_medication UNIQUE (compound_id, medication_id);
+    END IF;
+END $$;
+
 -- Bookmarks:
+-- User-owned rows cascade when the user is deleted, but compound rows are
+-- restricted so catalog maintenance cannot silently remove saved remedies.
 CREATE TABLE IF NOT EXISTS bookmarks (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    compound_id INTEGER NOT NULL REFERENCES compounds(id) ON DELETE CASCADE,
+    compound_id INTEGER NOT NULL REFERENCES compounds(id) ON DELETE RESTRICT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(user_id, compound_id)
 );
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'user_medications_medication_id_fkey'
+            AND confdeltype <> 'r'
+    ) THEN
+        ALTER TABLE user_medications
+            DROP CONSTRAINT user_medications_medication_id_fkey;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'user_medications_medication_id_fkey'
+    ) THEN
+        ALTER TABLE user_medications
+            ADD CONSTRAINT user_medications_medication_id_fkey
+            FOREIGN KEY (medication_id) REFERENCES medications(id) ON DELETE RESTRICT;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'bookmarks_compound_id_fkey'
+            AND confdeltype <> 'r'
+    ) THEN
+        ALTER TABLE bookmarks
+            DROP CONSTRAINT bookmarks_compound_id_fkey;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'bookmarks_compound_id_fkey'
+    ) THEN
+        ALTER TABLE bookmarks
+            ADD CONSTRAINT bookmarks_compound_id_fkey
+            FOREIGN KEY (compound_id) REFERENCES compounds(id) ON DELETE RESTRICT;
+    END IF;
+END $$;
 
 -- Indexes for common lookups and join paths.
 CREATE INDEX IF NOT EXISTS idx_compounds_name ON compounds(name);

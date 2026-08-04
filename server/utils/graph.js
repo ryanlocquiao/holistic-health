@@ -42,17 +42,18 @@ async function loadGraph() {
 function findConflicts(compoundId, medicationIds, graph) {
     const neighbors = graph[compoundId] || [];
     const medicationIdSet = new Set(medicationIds.map(Number));
-    const seenMedicationIds = new Set();
-    const conflicts = [];
-
+    const mostSevereByMedicationId = new Map();
+    
     for (const node of neighbors) {
-        if (seenMedicationIds.has(node.medication_id)) continue;
         if (!medicationIdSet.has(node.medication_id)) continue;
-
-        seenMedicationIds.add(node.medication_id);
-        conflicts.push(node);
+        
+        const existing = mostSevereByMedicationId.get(node.medication_id);
+        if (!existing || node.severity > existing.severity) {
+            mostSevereByMedicationId.set(node.medication_id, node);
+        }
     }
-
+    
+    const conflicts = [...mostSevereByMedicationId.values()];
     conflicts.sort((a, b) => b.severity - a.severity);
     return conflicts;
 }

@@ -46,6 +46,15 @@ async function mockHandleQuery(sql, params = []) {
         return { rows };
     }
 
+    if (normalizedSql.startsWith('SELECT id FROM medications WHERE id = ANY($1::int[])')) {
+        const [medicationIds] = params;
+        return {
+            rows: mockState.medications
+                .filter((medication) => medicationIds.includes(medication.id))
+                .map((medication) => ({ id: medication.id }))
+        };
+    }
+
     if (normalizedSql.startsWith('DELETE FROM user_medications WHERE user_id = $1')) {
         const [userId] = params;
         mockState.userMedications = mockState.userMedications.filter((um) => um.user_id !== userId);
@@ -173,5 +182,22 @@ describe('POST /api/medications/mine', () => {
         const res = await request(app).post('/api/medications/mine').send({ medication_ids: [1, -3] });
 
         expect(res.statusCode).toBe(400);
+    });
+
+    test('rejects stale medication ids without clearing the existing saved list', async () => {
+        const app = createTestApp();
+        await request(app).post('/api/medications/mine').send({ medication_ids: [1] });
+
+        const res = await request(app).post('/api/medications/mine').send({ medication_ids: [999] });
+
+        expect(res.statusCode).toBe(400);
+        expect(res.body).toEqual({
+            error: 'One or more medications could not be found',
+            missingMedicationIds: [999]
+        });
+
+        const mine = await request(app).get('/api/medications/mine');
+        expect(mine.body).toHaveLength(1);
+        expect(mine.body[0].id).toBe(1);
     });
 });

@@ -35,6 +35,7 @@ const SELECT_USER_MEDICATIONS_SQL = `
 `;
 
 const DELETE_USER_MEDICATIONS_SQL = 'DELETE FROM user_medications WHERE user_id = $1';
+const SELECT_EXISTING_MEDICATION_IDS_SQL = 'SELECT id FROM medications WHERE id = ANY($1::int[])';
 
 function getUniqueMedicationIds(medicationIds) {
     return [...new Set(medicationIds.map(Number))];
@@ -47,6 +48,15 @@ function buildInsertUserMedicationsSql(medicationCount) {
     ).join(', ');
 
     return `INSERT INTO user_medications (user_id, medication_id) VALUES ${values} ON CONFLICT DO NOTHING`;
+}
+
+async function findMissingMedicationIds(client, medicationIds) {
+    if (medicationIds.length === 0) return [];
+
+    const result = await client.query(SELECT_EXISTING_MEDICATION_IDS_SQL, [medicationIds]);
+    const existingMedicationIds = new Set(result.rows.map((row) => row.id));
+
+    return medicationIds.filter((medicationId) => !existingMedicationIds.has(medicationId));
 }
 
 // GET /api/medications
@@ -91,6 +101,16 @@ router.post('/mine', requireAuth, authenticatedLimiter, [
 
     try {
         await client.query('BEGIN');
+
+        const missingMedicationIds = await findMissingMedicationIds(client, medicationIds);
+        if (missingMedicationIds.length > 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+                error: 'One or more medications could not be found',
+                missingMedicationIds
+            });
+        }
+
         await client.query(DELETE_USER_MEDICATIONS_SQL, [req.user.userId]);
 
         if (medicationIds.length > 0) {

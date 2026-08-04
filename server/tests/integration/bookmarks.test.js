@@ -14,6 +14,7 @@ const request = require('supertest');
  */
 
 const mockState = {
+    compounds: [{ id: 3 }, { id: 5 }, { id: 7 }],
     bookmarks: [],
     nextBookmarkId: 1
 };
@@ -39,6 +40,12 @@ async function mockHandleQuery(sql, params = []) {
                 bookmarked_at: b.created_at
             }));
         return { rows };
+    }
+
+    if (normalizedSql.startsWith('SELECT id FROM compounds WHERE id = $1')) {
+        const [compoundId] = params;
+        const compound = mockState.compounds.find((item) => item.id === compoundId);
+        return { rows: compound ? [{ id: compound.id }] : [] };
     }
 
     if (normalizedSql.startsWith('INSERT INTO bookmarks')) {
@@ -83,6 +90,7 @@ function createTestApp() {
 }
 
 beforeEach(() => {
+    mockState.compounds = [{ id: 3 }, { id: 5 }, { id: 7 }];
     mockState.bookmarks = [];
     mockState.nextBookmarkId = 1;
     mockPool.query.mockClear();
@@ -139,6 +147,14 @@ describe('POST /api/bookmarks', () => {
         const res = await request(app).post('/api/bookmarks').send({ compoundId: -3 });
 
         expect(res.statusCode).toBe(400);
+    });
+
+    test('rejects a compoundId that is not in the catalog', async () => {
+        const app = createTestApp();
+        const res = await request(app).post('/api/bookmarks').send({ compoundId: 999 });
+
+        expect(res.statusCode).toBe(404);
+        expect(res.body).toEqual({ error: 'Compound not found' });
     });
 });
 

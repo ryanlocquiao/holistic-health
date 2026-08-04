@@ -205,9 +205,9 @@ export default function SearchResults() {
                             </div>
                         )}
 
-                        {!loading && results.length === 0 && !error && (
+                        {!loading && query && results.length === 0 && !error && (
                             <div className="mx-auto mt-8 max-w-2xl rounded-3xl border border-[#E9E4D8] bg-[#F9F6F0] px-5 py-4 text-sm text-[#3E5C4A]">
-                                No results found for "{query}". Try a different symptom.
+                                No results found for "{query}". Some symptoms may need care beyond natural herbs or remedies; consider checking with your doctor.
                             </div>
                         )}
 

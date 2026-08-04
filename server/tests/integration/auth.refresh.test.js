@@ -43,6 +43,11 @@ async function mockHandleQuery(sql, params = []) {
         return { rows: user ? [{ id: user.id }] : [] };
     }
 
+    if (normalizedSql.startsWith('SELECT id FROM users WHERE id = $1')) {
+        const user = mockState.users.find((item) => item.id === params[0]);
+        return { rows: user ? [{ id: user.id }] : [] };
+    }
+
     if (normalizedSql.startsWith('SELECT id, email, password_hash FROM users WHERE email = $1')) {
         const user = mockFindUserByEmail(params[0]);
         return { rows: user ? [cloneRow(user)] : [] };
@@ -352,5 +357,24 @@ describe('requireAuth access-token failures', () => {
             .set('Authorization', `Bearer ${expiredToken}`);
         expect(expiredRes.statusCode).toBe(401);
         expect(expiredRes.body.code).toBe('TOKEN_EXPIRED');
+    });
+
+    test('rejects a valid token when the user row no longer exists', async () => {
+        const app = createTestApp();
+        const staleToken = jwt.sign(
+            { userId: 999, email: 'deleted@example.com' },
+            process.env.JWT_SECRET,
+            { expiresIn: '15m' }
+        );
+
+        const res = await request(app)
+            .get('/protected')
+            .set('Authorization', `Bearer ${staleToken}`);
+
+        expect(res.statusCode).toBe(401);
+        expect(res.body).toEqual({
+            error: 'Authenticated user no longer exists. Please log in again.',
+            code: 'AUTH_USER_NOT_FOUND'
+        });
     });
 });

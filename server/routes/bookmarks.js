@@ -4,6 +4,27 @@ const pool = require('../db/index');
 const requireAuth = require('../middleware/requireAuth');
 const { authenticatedLimiter } = require('../middleware/rateLimiters');
 
+const SELECT_COMPOUND_EXISTS_SQL = 'SELECT id FROM compounds WHERE id = $1';
+const SELECT_BOOKMARKS_SQL = `
+    SELECT c.id, c.name, c.category, c.description, c.evidence_tier, c.source_url, b.created_at AS bookmarked_at
+    FROM bookmarks b
+    JOIN compounds c ON c.id = b.compound_id
+    WHERE b.user_id = $1
+    ORDER BY b.created_at DESC
+`;
+const INSERT_BOOKMARK_SQL = `
+    INSERT INTO bookmarks (user_id, compound_id)
+    VALUES ($1, $2)
+    ON CONFLICT (user_id, compound_id) DO NOTHING
+    RETURNING id
+`;
+const DELETE_BOOKMARK_SQL = `
+    DELETE FROM bookmarks
+    WHERE user_id = $1
+        AND compound_id = $2
+    RETURNING id
+`;
+
 /**
  * Bookmark routes.
  *
@@ -23,20 +44,18 @@ function parsePositiveInteger(value) {
     return parsedValue;
 }
 
+async function compoundExists(compoundId) {
+    const result = await pool.query(SELECT_COMPOUND_EXISTS_SQL, [compoundId]);
+    return result.rows.length > 0;
+}
+
 // Can only access bookmarks if user has an account
 router.use(requireAuth, authenticatedLimiter);
 
 // GET /api/bookmarks
 router.get('/', async (req, res) => {
     try {
-        const result = await pool.query(
-            `SELECT c.id, c.name, c.category, c.description, c.evidence_tier, c.source_url, b.created_at AS bookmarked_at 
-            FROM bookmarks b
-            JOIN compounds c ON c.id = b.compound_id
-            WHERE b.user_id = $1
-            ORDER BY b.created_at DESC`,
-            [req.user.userId]
-        );
+        const result = await pool.query(SELECT_BOOKMARKS_SQL, [req.user.userId]);
         res.json(result.rows);
     } catch (err) {
         console.error('Get bookmarks error:', err.message);
@@ -52,10 +71,11 @@ router.post('/', async (req, res) => {
     }
 
     try {
-        const result = await pool.query(
-            `INSERT INTO bookmarks (user_id, compound_id) VALUES ($1, $2) ON CONFLICT (user_id, compound_id) DO NOTHING RETURNING id`,
-            [req.user.userId, compoundId]
-        );
+        if (!(await compoundExists(compoundId))) {
+            return res.status(404).json({ error: 'Compound not found' });
+        }
+
+        const result = await pool.query(INSERT_BOOKMARK_SQL, [req.user.userId, compoundId]);
 
         if (result.rows.length === 0) {
             return res.status(200).json({ message: 'Already bookmarked' });
@@ -76,10 +96,7 @@ router.delete('/:compoundId', async (req, res) => {
     }
 
     try {
-        const result = await pool.query(
-            `DELETE FROM bookmarks WHERE user_id = $1 AND compound_id = $2 RETURNING id`,
-            [req.user.userId, compoundId]
-        );
+        const result = await pool.query(DELETE_BOOKMARK_SQL, [req.user.userId, compoundId]);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Bookmark not found' });

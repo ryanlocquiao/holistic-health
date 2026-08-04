@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowRight, Leaf, Bookmark, AlertTriangle } from 'lucide-react'
 import Nav from '../components/Nav.jsx'
 
+const API_URL = import.meta.env.VITE_API_URL
+const RESET_SESSION_ERROR_CODES = new Set(['AUTH_TOKEN_MISSING', 'AUTH_USER_NOT_FOUND', 'TOKEN_INVALID'])
+
 /**
  * Compound detail page.
  *
@@ -76,6 +79,99 @@ const SEVERITY_CONFIG = {
 
 const DEFAULT_NOT_FOUND_MESSAGE = 'Compound not found.'
 
+function getStoredToken() {
+    return localStorage.getItem('token')
+}
+
+function clearStoredAuth() {
+    localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('user')
+}
+
+async function parseJsonSafely(response) {
+    try {
+        return await response.json()
+    } catch {
+        return {}
+    }
+}
+
+/**
+ * Rotates the persisted refresh token and stores the replacement access token.
+ *
+ * Manual test:
+ * - Log in, let or force the access token to expire, then save a remedy.
+ * - The request should refresh once and persist the bookmark instead of
+ *   showing a false saved state that disappears after reload.
+ */
+async function refreshAccessToken() {
+    const refreshToken = localStorage.getItem('refreshToken')
+    if (!refreshToken) return null
+
+    try {
+        const res = await fetch(`${API_URL}/api/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken })
+        })
+
+        if (!res.ok) return null
+
+        const data = await parseJsonSafely(res)
+        const nextAccessToken = data.accessToken || data.token
+
+        if (!nextAccessToken) return null
+
+        localStorage.setItem('token', nextAccessToken)
+        if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken)
+        if (data.user) localStorage.setItem('user', JSON.stringify(data.user))
+
+        return nextAccessToken
+    } catch {
+        return null
+    }
+}
+
+/**
+ * Performs an authenticated request and retries once when the access JWT has
+ * expired. Other 401 responses are returned untouched so callers can handle a
+ * true login failure separately.
+ */
+async function fetchWithAuthRetry(url, options = {}) {
+    const token = getStoredToken()
+    const headers = {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${token}`
+    }
+
+    const res = await fetch(url, { ...options, headers })
+
+    if (res.status !== 401) return res
+
+    const authError = await parseJsonSafely(res.clone())
+    if (RESET_SESSION_ERROR_CODES.has(authError.code)) {
+        clearStoredAuth()
+        return res
+    }
+
+    if (authError.code !== 'TOKEN_EXPIRED') return res
+
+    const nextAccessToken = await refreshAccessToken()
+    if (!nextAccessToken) {
+        clearStoredAuth()
+        return res
+    }
+
+    return fetch(url, {
+        ...options,
+        headers: {
+            ...(options.headers || {}),
+            Authorization: `Bearer ${nextAccessToken}`
+        }
+    })
+}
+
 function getEvidenceTier(compound) {
     return compound?.evidence_tier ?? 3
 }
@@ -96,12 +192,13 @@ export default function RemedyDetail() {
 
     const [bookmarked, setBookmarked] = useState(false)
     const [bookmarkLoading, setBookmarkLoading] = useState(false)
+    const [bookmarkError, setBookmarkError] = useState(null)
 
     const [conflicts, setConflicts] = useState([])
     const [conflictLoading, setConflictLoading] = useState(false)
     const [userHasMeds, setUserHasMeds] = useState(false)
 
-    const token = localStorage.getItem('token')
+    const token = getStoredToken()
 
     // Fetch compound
     useEffect(() => {
@@ -113,7 +210,7 @@ export default function RemedyDetail() {
                 setLoading(true)
 
                 const res = await fetch(
-                    `${import.meta.env.VITE_API_URL}/api/compounds/${id}`,
+                    `${API_URL}/api/compounds/${id}`,
                     { signal: abortController.signal }
                 )
 
@@ -146,9 +243,7 @@ export default function RemedyDetail() {
 
         async function checkBookmark() {
             try {
-                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/bookmarks`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                })
+                const res = await fetchWithAuthRetry(`${API_URL}/api/bookmarks`)
 
                 if (!res.ok) return
                 const data = await res.json()
@@ -167,10 +262,7 @@ export default function RemedyDetail() {
         async function checkContraindications() {
             setConflictLoading(true)
             try {
-                const medRes = await fetch(
-                    `${import.meta.env.VITE_API_URL}/api/medications/mine`,
-                    { headers: { Authorization: `Bearer ${token}` }}
-                )
+                const medRes = await fetchWithAuthRetry(`${API_URL}/api/medications/mine`)
 
                 if (!medRes.ok) return
 
@@ -180,7 +272,7 @@ export default function RemedyDetail() {
 
                 const medIds = meds.map(m => m.id).join(',')
                 const intRes = await fetch(
-                    `${import.meta.env.VITE_API_URL}/api/interactions?compound=${compound.id}&medications=${medIds}`
+                    `${API_URL}/api/interactions?compound=${compound.id}&medications=${medIds}`
                 )
                 if (!intRes.ok) return
 
@@ -202,28 +294,43 @@ export default function RemedyDetail() {
             return
         }
 
-        setBookmarkLoading(true)
-        try {
-            if (bookmarked) {
-                await fetch(`${import.meta.env.VITE_API_URL}/api/bookmarks/${compound.id}`, {
-                    method: 'DELETE',
-                    headers: { Authorization: `Bearer ${token}` }
-                })
+        if (!compound) return
 
+        setBookmarkLoading(true)
+        setBookmarkError(null)
+        try {
+            const method = bookmarked ? 'DELETE' : 'POST'
+            const url = bookmarked
+                ? `${API_URL}/api/bookmarks/${compound.id}`
+                : `${API_URL}/api/bookmarks`
+            const options = bookmarked
+                ? { method }
+                : {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ compoundId: compound.id })
+                }
+
+            const res = await fetchWithAuthRetry(url, options)
+            const data = await parseJsonSafely(res.clone())
+
+            if (!res.ok) {
+                if (RESET_SESSION_ERROR_CODES.has(data.code)) {
+                    clearStoredAuth()
+                    navigate('/login')
+                    return
+                }
+
+                throw new Error(data.error || 'Bookmark update failed')
+            }
+
+            if (bookmarked) {
                 setBookmarked(false)
             } else {
-                await fetch(`${import.meta.env.VITE_API_URL}/api/bookmarks`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ compoundId: compound.id })
-                })
                 setBookmarked(true)
             }
         } catch {
-            // UI stays consistent with last known server state
+            setBookmarkError('Unable to update saved remedy. Please try again.')
         } finally {
             setBookmarkLoading(false)
         }
@@ -411,6 +518,11 @@ export default function RemedyDetail() {
                                 {bookmarkLoading ? '...' : bookmarked ? 'Saved' : 'Save'}
                             </button>
                         </div>
+                        {bookmarkError && (
+                            <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                {bookmarkError}
+                            </p>
+                        )}
 
                         <div className="mt-8 grid gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
                             <div className="space-y-6">

@@ -6,9 +6,16 @@ import Nav from '../components/Nav.jsx'
 const API_URL = import.meta.env.VITE_API_URL
 const TOAST_TIMEOUT_MS = 3000
 const MEDICATION_RESULT_LIMIT = 8
+const RESET_SESSION_ERROR_CODES = new Set(['AUTH_TOKEN_MISSING', 'AUTH_USER_NOT_FOUND', 'TOKEN_INVALID'])
 
 function getStoredToken() {
     return localStorage.getItem('token')
+}
+
+function clearStoredAuth() {
+    localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('user')
 }
 
 /**
@@ -26,6 +33,7 @@ function readStoredUser() {
         return JSON.parse(storedUser)
     } catch {
         localStorage.removeItem('token')
+        localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
         return null
     }
@@ -135,10 +143,20 @@ export default function Dashboard() {
         if (res.status !== 401) return res
 
         const authError = await parseJsonSafely(res.clone())
+        if (RESET_SESSION_ERROR_CODES.has(authError.code)) {
+            clearStoredAuth()
+            navigate('/login')
+            return res
+        }
+
         if (authError.code !== 'TOKEN_EXPIRED') return res
 
         const nextAccessToken = await refreshAccessToken()
-        if (!nextAccessToken) return res
+        if (!nextAccessToken) {
+            clearStoredAuth()
+            navigate('/login')
+            return res
+        }
 
         return fetch(url, {
             ...options,
@@ -147,7 +165,7 @@ export default function Dashboard() {
                 Authorization: `Bearer ${nextAccessToken}`
             }
         })
-    }, [refreshAccessToken])
+    }, [navigate, refreshAccessToken])
 
     useEffect(() => {
         const params  = new URLSearchParams(location.search)
@@ -234,9 +252,7 @@ export default function Dashboard() {
     }, [])
 
     function handleLogout() {
-        localStorage.removeItem('token')
-        localStorage.removeItem('refreshToken')
-        localStorage.removeItem('user')
+        clearStoredAuth()
         navigate('/')
     }
 
@@ -390,6 +406,18 @@ export default function Dashboard() {
 
                     <div className="lg:col-span-8 space-y-8">
 
+                        {toast && (
+                            <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm shadow-sm
+                                ${toast.type === 'success' ? 'border-green-200 bg-green-50 text-green-700' : 'border-red-200 bg-red-50 text-red-700'}`}
+                            >
+                                {toast.type === 'success'
+                                    ? <CheckCircle className="h-4 w-4 shrink-0" />
+                                    : <AlertCircle className="h-4 w-4 shrink-0" />
+                                }
+                                {toast.msg}
+                            </div>
+                        )}
+
                         <div className="bg-[#E9E4D8] rounded-[2rem] p-8 md:p-10 shadow-sm border border-[#E9E4D8]">
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-2xl font-serif font-medium text-[#1A3326] flex items-center">
@@ -453,18 +481,6 @@ export default function Dashboard() {
                                     <span className="text-xs text-[#4E7A5E] animate-pulse">Saving...</span>
                                 )}
                             </div>
-
-                            {toast && (
-                                <div className={`mb-4 flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm
-                                    ${toast.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}
-                                >
-                                    {toast.type === 'success'
-                                        ? <CheckCircle className="h-4 w-4 shrink-0" />
-                                        : <AlertCircle className="h-4 w-4 shrink-0" />
-                                    }
-                                    {toast.msg}
-                                </div>
-                            )}
 
                             <div className="relative mb-4">
                                 <div

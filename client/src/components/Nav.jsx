@@ -63,13 +63,13 @@ export default function Nav() {
 
     return (
         <header className="w-full relative z-40 bg-transparent">
-            <nav className="flex items-center justify-between px-6 md:px-8 py-6 w-full max-w-7xl mx-auto">
-                <Link to="/" className="flex items-center space-x-2 text-2xl font-serif font-bold text-[#1A3326] transition-opacity hover:opacity-80">
+            <nav className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-6 py-6 md:px-8 w-full max-w-7xl mx-auto">
+                <Link to="/" className="justify-self-start flex min-w-0 items-center space-x-2 text-2xl font-serif font-bold text-[#1A3326] transition-opacity hover:opacity-80">
                     <Sprout className="w-8 h-8 text-[#4E7A5E]" />
-                    <span>Holistic Health</span>
+                    <span className="truncate">Holistic Health</span>
                 </Link>
 
-                <div className="hidden md:flex items-center space-x-8 text-sm font-medium tracking-wide text-[#1A3326]">
+                <div className="hidden md:flex items-center justify-center space-x-8 text-sm font-medium tracking-wide text-[#1A3326]">
                     <Link to="/" className="hover:text-[#4E7A5E] transition-colors">Home</Link>
                     <Link to="/search" className="hover:text-[#4E7A5E] transition-colors">Remedies</Link>
                     {token ? (
@@ -77,7 +77,7 @@ export default function Nav() {
                     ) : null}
                 </div>
 
-                <div className="hidden md:block">
+                <div className="hidden md:block justify-self-end">
                     {token ? (
                         <div className="relative" ref={dropdownRef}>
                             <button 
@@ -93,6 +93,13 @@ export default function Nav() {
 
                             {showDropdown && (
                                 <div className="absolute right-0 mt-3 w-48 bg-white border border-[#E9E4D8] rounded-2xl shadow-sm py-2 z-50 overflow-hidden">
+                                    <Link
+                                        to="/profile-settings"
+                                        onClick={() => setShowDropdown(false)}
+                                        className="block w-full px-5 py-2.5 text-left text-sm font-medium text-[#1A3326] transition-colors hover:bg-[#F9F6F0] hover:text-[#4E7A5E]"
+                                    >
+                                        Profile Settings
+                                    </Link>
                                     <button 
                                         type="button"
                                         onClick={() => {

@@ -90,14 +90,8 @@ describe('findConflicts', () => {
 
         expect(result.map((c) => c.medication_id).sort((a, b) => a - b)).toEqual([10, 11]);
     });
-
-    // Documents current behavior rather than an intended contract - flagged
-    // separately in the write-up. If `interactions` ever contains two rows
-    // for the same (compound_id, medication_id) pair with different
-    // severities, whichever appears first in `neighbors` wins - not
-    // necessarily the more severe one. loadGraph's query also has no
-    // ORDER BY, so "first" isn't guaranteed stable across queries either.
-    test('when a medication_id appears twice for a compound, the first-encountered edge wins - not necessarily the more severe one', () => {
+    
+    test('when a medication_id appears twice for a compound, the most severe edge wins', () => {
         const graphWithDuplicateEdge = {
             1: [
                 { medication_id: 10, severity: 1, description: 'Mild version, listed first' },
@@ -108,6 +102,24 @@ describe('findConflicts', () => {
         const result = findConflicts(1, [10], graphWithDuplicateEdge);
 
         expect(result).toHaveLength(1);
-        expect(result[0].severity).toBe(1);
+        expect(result[0].severity).toBe(4);
+    });
+
+    test('most-severe resolution is order-independent (severe edge listed first still wins)', () => {
+        const graphWithDuplicateEdge = {
+            1: [
+                { medication_id: 10, severity: 4, description: 'Severe version, listed first' },
+                { medication_id: 10, severity: 1, description: 'Mild version, listed second' }
+            ]
+        };
+
+        const result = findConflicts(1, [10], graphWithDuplicateEdge);
+        expect(result[0].severity).toBe(4);
+    });
+
+    test('a large medication list resolves without missing or duplicating matches', () => {
+        const manyMedicationIds = Array.from({ length: 200 }, (_, i) => i + 1);
+        const result = findConflicts(1, manyMedicationIds, graph); // graph from the describe block above
+        expect(result.map((c) => c.medication_id).sort((a, b) => a - b)).toEqual([10, 11, 12]);
     });
 });

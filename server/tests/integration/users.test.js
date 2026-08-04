@@ -1,6 +1,13 @@
 const express = require('express');
 const request = require('supertest');
 
+jest.mock('bcrypt', () => ({
+    compare: jest.fn(),
+    hash: jest.fn()
+}));
+
+const bcrypt = require('bcrypt');
+
 /**
  * Integration tests for the users/me route.
  *
@@ -10,7 +17,12 @@ const request = require('supertest');
  */
 
 const mockState = {
-    users: [{ id: 1, email: 'user@example.com', created_at: new Date('2026-01-01T00:00:00.000Z') }]
+    users: [{
+        id: 1,
+        email: 'user@example.com',
+        password_hash: 'hashed-current-password',
+        created_at: new Date('2026-01-01T00:00:00.000Z')
+    }]
 };
 
 function normalizeSql(sql) {
@@ -24,6 +36,19 @@ async function mockHandleQuery(sql, params = []) {
         const [id] = params;
         const user = mockState.users.find((u) => u.id === id);
         return { rows: user ? [user] : [] };
+    }
+
+    if (normalizedSql.startsWith('SELECT id, password_hash FROM users WHERE id = $1')) {
+        const [id] = params;
+        const user = mockState.users.find((u) => u.id === id);
+        return { rows: user ? [{ id: user.id, password_hash: user.password_hash }] : [] };
+    }
+
+    if (normalizedSql.startsWith('UPDATE users SET password_hash = $1 WHERE id = $2')) {
+        const [passwordHash, id] = params;
+        const user = mockState.users.find((u) => u.id === id);
+        if (user) user.password_hash = passwordHash;
+        return { rows: [] };
     }
 
     throw new Error(`Unhandled SQL in users test: ${normalizedSql}`);
@@ -46,7 +71,17 @@ function createTestApp() {
 }
 
 beforeEach(() => {
+    mockState.users = [{
+        id: 1,
+        email: 'user@example.com',
+        password_hash: 'hashed-current-password',
+        created_at: new Date('2026-01-01T00:00:00.000Z')
+    }];
     mockPool.query.mockClear();
+    bcrypt.compare.mockClear();
+    bcrypt.hash.mockClear();
+    bcrypt.compare.mockResolvedValue(true);
+    bcrypt.hash.mockResolvedValue('hashed-new-password');
 });
 
 describe('GET /api/users/me', () => {
@@ -71,5 +106,54 @@ describe('GET /api/users/me', () => {
         const res = await request(app).get('/api/users/me');
 
         expect(res.headers['ratelimit-limit']).toBeDefined();
+    });
+});
+
+describe('PATCH /api/users/password', () => {
+    test('updates the authenticated user password after verifying the current password', async () => {
+        const app = createTestApp();
+        const res = await request(app)
+            .patch('/api/users/password')
+            .send({ currentPassword: 'current-password', newPassword: 'new-password' });
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body).toEqual({ message: 'Password updated' });
+        expect(bcrypt.compare).toHaveBeenCalledWith('current-password', 'hashed-current-password');
+        expect(bcrypt.hash).toHaveBeenCalledWith('new-password', 12);
+        expect(mockState.users[0].password_hash).toBe('hashed-new-password');
+    });
+
+    test('rejects an incorrect current password', async () => {
+        bcrypt.compare.mockResolvedValueOnce(false);
+        const app = createTestApp();
+
+        const res = await request(app)
+            .patch('/api/users/password')
+            .send({ currentPassword: 'wrong-password', newPassword: 'new-password' });
+
+        expect(res.statusCode).toBe(401);
+        expect(res.body).toEqual({ error: 'Current password is incorrect' });
+        expect(bcrypt.hash).not.toHaveBeenCalled();
+    });
+
+    test('rejects a too-short new password', async () => {
+        const app = createTestApp();
+        const res = await request(app)
+            .patch('/api/users/password')
+            .send({ currentPassword: 'current-password', newPassword: 'short' });
+
+        expect(res.statusCode).toBe(400);
+        expect(res.body.errors[0].msg).toBe('New password must be at least 8 characters');
+    });
+
+    test('returns 404 if the user id from the token no longer exists', async () => {
+        const app = createTestApp();
+        const res = await request(app)
+            .patch('/api/users/password')
+            .set('x-test-user-id', '999')
+            .send({ currentPassword: 'current-password', newPassword: 'new-password' });
+
+        expect(res.statusCode).toBe(404);
+        expect(res.body).toEqual({ error: 'User not found' });
     });
 });

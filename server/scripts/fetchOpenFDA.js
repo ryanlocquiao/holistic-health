@@ -131,7 +131,7 @@ async function fetchOpenFDA() {
             }
 
             const record = await upsertMedicationFromLabel(results[0], term);
-            console.log(`[${new Date().toISOString()}] Inserted: ${record.name} (id: ${record.id})`);
+            console.log(`[${new Date().toISOString()}] Upserted: ${record.name} (id: ${record.id})`);
         })
     );
 
