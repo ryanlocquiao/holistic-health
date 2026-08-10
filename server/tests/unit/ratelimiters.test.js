@@ -1,6 +1,6 @@
 const express = require('express');
 const request = require('supertest');
-const rateLimit = require('express-rate-limit');
+const { createUserAwareLimiter } = require('../../middleware/rateLimiters');
 
 /**
  * Unit tests for the authenticated-route rate limiter.
@@ -15,14 +15,11 @@ const rateLimit = require('express-rate-limit');
  * - npm test -- --runTestsByPath tests/unit/rateLimiters.test.js
  */
 
-function buildKeyedLimiter(max) {
-    return rateLimit({
+function buildKeyedLimiter(max, message = { error: 'Too many requests, please try again later.' }) {
+    return createUserAwareLimiter({
         windowMs: 15 * 60 * 1000,
         max,
-        standardHeaders: true,
-        legacyHeaders: false,
-        keyGenerator: (req) => `user:${req.user.userId}`,
-        message: { error: 'Too many requests, please try again later.' }
+        message
     });
 }
 
@@ -56,6 +53,22 @@ describe('authenticated route limiter', () => {
 
         expect(blocked.statusCode).toBe(429);
         expect(blocked.body).toEqual({ error: 'Too many requests, please try again later.' });
+    });
+
+    test('can return the chatbot-specific rate limit response', async () => {
+        const app = buildTestApp(buildKeyedLimiter(1, {
+            error: 'Recommendation limit reached. Please try again later.',
+            code: 'CHATBOT_RATE_LIMITED'
+        }));
+
+        await request(app).get('/protected-resource');
+        const blocked = await request(app).get('/protected-resource');
+
+        expect(blocked.statusCode).toBe(429);
+        expect(blocked.body).toEqual({
+            error: 'Recommendation limit reached. Please try again later.',
+            code: 'CHATBOT_RATE_LIMITED'
+        });
     });
 
     test('keys by user id, so two different users get independent limits', async () => {

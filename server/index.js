@@ -21,6 +21,7 @@ const bookmarkRoutes = require('./routes/bookmarks');
 const interactionRoutes = require('./routes/interactions');
 const medicationRoutes = require('./routes/medications');
 const authRoutes = require('./routes/auth');
+const chatbotRoutes = require('./routes/chatbot');
 const userRoutes = require('./routes/users');
 
 /**
@@ -63,6 +64,7 @@ app.use('/api/bookmarks', bookmarkRoutes);
 app.use('/api/interactions', interactionRoutes);
 app.use('/api/medications', medicationRoutes);
 app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/users', userRoutes);
 
 // Test DB connection on startup

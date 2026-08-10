@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Bookmark, Pill, Leaf, Search, ArrowRight, Plus, X, CheckCircle, AlertCircle } from 'lucide-react'
 import Nav from '../components/Nav.jsx'
+import Chatbot from '../components/Chatbot.jsx'
 
 const API_URL = import.meta.env.VITE_API_URL
 const TOAST_TIMEOUT_MS = 3000
 const MEDICATION_RESULT_LIMIT = 8
 const RESET_SESSION_ERROR_CODES = new Set(['AUTH_TOKEN_MISSING', 'AUTH_USER_NOT_FOUND', 'TOKEN_INVALID'])
+const ADMIN_VISUAL_USER = { email: 'admin@hh.local' }
 
 function getStoredToken() {
     return localStorage.getItem('token')
@@ -39,6 +41,10 @@ function readStoredUser() {
     }
 }
 
+function isAdminPreview(search) {
+    return new URLSearchParams(search).get('admin') === 'true'
+}
+
 async function parseJsonSafely(response) {
     try {
         return await response.json()
@@ -62,23 +68,23 @@ async function parseJsonSafely(response) {
  * - Use `/dashboard?admin=true` for a no-token visual smoke test.
  */
 export default function Dashboard() {
-    const [user, setUser] = useState(null)
-    const [loading, setLoading] = useState(true)
+    const navigate = useNavigate()
+    const location = useLocation()
+    const isAdmin = isAdminPreview(location.search)
+    const hasToken = Boolean(getStoredToken())
+    const [user, setUser] = useState(() => readStoredUser())
     const [bookmarks, setBookmarks] = useState([])
-    const [bookmarksLoading, setBookmarksLoading] = useState(true)
+    const [bookmarksLoading, setBookmarksLoading] = useState(() => Boolean(getStoredToken()))
 
     const [medCatalog, setMedCatalog] = useState([])
     const [savedMeds, setSavedMeds] = useState([])
-    const [medsLoading, setMedsLoading] = useState(true)
+    const [medsLoading, setMedsLoading] = useState(() => Boolean(getStoredToken()))
     const [medsSaving, setMedsSaving] = useState(false)
     const [medQuery, setMedQuery] = useState('')
     const [dropdownOpen, setDropdownOpen] = useState(false)
     const [toast, setToast] = useState(null)
     const searchRef = useRef(null)
     const dropdownRef = useRef(null)
-
-    const navigate = useNavigate()
-    const location = useLocation()
 
     const showToast = useCallback((type, msg) => {
         setToast({ type, msg })
@@ -152,11 +158,7 @@ export default function Dashboard() {
         if (authError.code !== 'TOKEN_EXPIRED') return res
 
         const nextAccessToken = await refreshAccessToken()
-        if (!nextAccessToken) {
-            clearStoredAuth()
-            navigate('/login')
-            return res
-        }
+        if (!nextAccessToken) return res
 
         return fetch(url, {
             ...options,
@@ -168,34 +170,13 @@ export default function Dashboard() {
     }, [navigate, refreshAccessToken])
 
     useEffect(() => {
-        const params  = new URLSearchParams(location.search)
-        const isAdmin = params.get('admin') === 'true'
-
-        if (isAdmin) {
-            setUser({ email: 'admin@hh.local' })
-            setLoading(false)
-            return
-        }
-
-        const token = getStoredToken()
-        const storedUser = readStoredUser()
-
-        if (!token || !storedUser) {
+        if (!isAdmin && (!getStoredToken() || !user)) {
             navigate('/login')
-            return
         }
-
-        setUser(storedUser)
-        setLoading(false)
-    }, [navigate, location.search])
+    }, [isAdmin, navigate, user])
 
     useEffect(() => {
-        const token = getStoredToken()
-        if (!token) {
-            setBookmarks([])
-            setBookmarksLoading(false)
-            return
-        }
+        if (!hasToken) return
 
         async function fetchBookmarks() {
             try {
@@ -210,19 +191,12 @@ export default function Dashboard() {
         }
 
         fetchBookmarks()
-    }, [fetchWithAuthRetry])
+    }, [fetchWithAuthRetry, hasToken])
 
     useEffect(() => {
-        const token = getStoredToken()
-        if (!token) {
-            setMedCatalog([])
-            setSavedMeds([])
-            setMedsLoading(false)
-            return
-        }
+        if (!hasToken) return
 
         async function fetchMedications() {
-            setMedsLoading(true)
             try {
                 const [catRes, savedRes] = await Promise.all([
                     fetch(`${API_URL}/api/medications`),
@@ -238,7 +212,7 @@ export default function Dashboard() {
         }
 
         fetchMedications()
-    }, [fetchWithAuthRetry, showToast])
+    }, [fetchWithAuthRetry, hasToken, showToast])
 
     useEffect(() => {
         function handleClick(e) {
@@ -334,7 +308,7 @@ export default function Dashboard() {
         }
     }
 
-    if (loading) {
+    if (!isAdmin && !user) {
         return (
             <div className="min-h-screen bg-[#F9F6F0] flex items-center justify-center selection:bg-[#4E7A5E] selection:text-white">
                 <div className="w-8 h-8 border-2 border-[#4E7A5E] border-t-transparent rounded-full animate-spin" />
@@ -342,7 +316,8 @@ export default function Dashboard() {
         )
     }
 
-    const userInitial = user?.email?.charAt(0).toUpperCase() || 'U'
+    const displayUser = isAdmin ? ADMIN_VISUAL_USER : user
+    const userInitial = displayUser?.email?.charAt(0).toUpperCase() || 'U'
 
     return (
         <div className="relative min-h-screen font-sans selection:bg-[#4E7A5E] selection:text-white flex flex-col bg-[#F9F6F0]">
@@ -351,57 +326,63 @@ export default function Dashboard() {
             <main className="max-w-6xl mx-auto px-6 pt-6 pb-24 animate-in fade-in duration-500 w-full flex-1">
                 <div className="grid lg:grid-cols-12 gap-8 items-start">
 
-                    <div className="lg:col-span-4 bg-[#1A3326] text-[#F9F6F0] rounded-[2rem] p-8 shadow-xl relative overflow-hidden group">
-                        <div className="absolute -right-6 -bottom-6 text-[#2C4C3B] opacity-50 transform -rotate-12 group-hover:rotate-0 transition-transform duration-700 pointer-events-none">
-                            <Leaf className="w-48 h-48" />
+                    <div className="lg:col-span-4 flex flex-col gap-8">
+
+                        <div className="bg-[#1A3326] text-[#F9F6F0] rounded-[2rem] p-8 shadow-xl relative overflow-hidden group">
+                            <div className="absolute -right-6 -bottom-6 text-[#2C4C3B] opacity-50 transform -rotate-12 group-hover:rotate-0 transition-transform duration-700 pointer-events-none">
+                                <Leaf className="w-48 h-48" />
+                            </div>
+
+                            <div className="relative z-10">
+                                <div className="w-20 h-20 bg-[#2C4C3B] rounded-full flex items-center justify-center mb-6 border-4 border-[#1A3326] shadow-md">
+                                    <span className="text-3xl font-serif text-[#A3B899]">{userInitial}</span>
+                                </div>
+
+                                <h1 className="text-2xl font-serif font-medium text-white mb-1">My Dashboard</h1>
+                                <p className="text-[#A3B899] text-sm mb-10">{displayUser?.email}</p>
+
+                                <div className="space-y-3">
+                                    <button
+                                        type="button"
+                                        className="w-full flex items-center justify-between p-4 rounded-xl bg-[#2C4C3B] text-white font-medium text-sm border border-transparent hover:border-[#4E7A5E] transition-all"
+                                    >
+                                        <span className="flex items-center">
+                                            <Bookmark className="w-4 h-4 mr-3 text-[#A3B899]" />
+                                            Saved Remedies
+                                        </span>
+                                        <span className="bg-[#1A3326] px-2.5 py-1 rounded-md text-xs text-[#A3B899]">
+                                            {bookmarksLoading ? '-' : bookmarks.length}
+                                        </span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-[#2C4C3B] text-[#A3B899] font-medium text-sm transition-all border border-transparent hover:border-[#4E7A5E]"
+                                    >
+                                        <span className="flex items-center">
+                                            <Pill className="w-4 h-4 mr-3" />
+                                            Medications
+                                        </span>
+                                        <span className="bg-transparent px-2.5 py-1 rounded-md text-xs">
+                                            {medsLoading ? '-' : savedMeds.length}
+                                        </span>
+                                    </button>
+                                </div>
+
+                                <div className="md:hidden mt-8 pt-6 border-t border-[#2C4C3B]">
+                                    <button
+                                        type="button"
+                                        onClick={handleLogout}
+                                        className="w-full text-center text-sm font-medium text-[#A3B899] hover:text-white transition-colors"
+                                    >
+                                        Sign Out
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="relative z-10">
-                            <div className="w-20 h-20 bg-[#2C4C3B] rounded-full flex items-center justify-center mb-6 border-4 border-[#1A3326] shadow-md">
-                                <span className="text-3xl font-serif text-[#A3B899]">{userInitial}</span>
-                            </div>
+                        <Chatbot />
 
-                            <h1 className="text-2xl font-serif font-medium text-white mb-1">My Dashboard</h1>
-                            <p className="text-[#A3B899] text-sm mb-10">{user?.email}</p>
-
-                            <div className="space-y-3">
-                                <button
-                                    type="button"
-                                    className="w-full flex items-center justify-between p-4 rounded-xl bg-[#2C4C3B] text-white font-medium text-sm border border-transparent hover:border-[#4E7A5E] transition-all"
-                                >
-                                    <span className="flex items-center">
-                                        <Bookmark className="w-4 h-4 mr-3 text-[#A3B899]" />
-                                        Saved Remedies
-                                    </span>
-                                    <span className="bg-[#1A3326] px-2.5 py-1 rounded-md text-xs text-[#A3B899]">
-                                        {bookmarksLoading ? '-' : bookmarks.length}
-                                    </span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-[#2C4C3B] text-[#A3B899] font-medium text-sm transition-all border border-transparent hover:border-[#4E7A5E]"
-                                >
-                                    <span className="flex items-center">
-                                        <Pill className="w-4 h-4 mr-3" />
-                                        Medications
-                                    </span>
-                                    <span className="bg-transparent px-2.5 py-1 rounded-md text-xs">
-                                        {medsLoading ? '-' : savedMeds.length}
-                                    </span>
-                                </button>
-                            </div>
-
-                            <div className="md:hidden mt-8 pt-6 border-t border-[#2C4C3B]">
-                                <button
-                                    type="button"
-                                    onClick={handleLogout}
-                                    className="w-full text-center text-sm font-medium text-[#A3B899] hover:text-white transition-colors"
-                                >
-                                    Sign Out
-                                </button>
-                            </div>
-                        </div>
                     </div>
 
                     <div className="lg:col-span-8 space-y-8">

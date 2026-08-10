@@ -59,8 +59,7 @@ async function parseJsonSafely(response) {
  * - Log in, open the avatar menu, choose Profile Settings, and change password.
  */
 export default function ProfileSettings() {
-    const [user, setUser] = useState(null)
-    const [loading, setLoading] = useState(true)
+    const [user, setUser] = useState(() => readStoredUser())
     const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '' })
     const [saving, setSaving] = useState(false)
     const [notice, setNotice] = useState(null)
@@ -123,11 +122,7 @@ export default function ProfileSettings() {
         if (authError.code !== 'TOKEN_EXPIRED') return res
 
         const nextAccessToken = await refreshAccessToken()
-        if (!nextAccessToken) {
-            clearStoredAuth()
-            navigate('/login')
-            return res
-        }
+        if (!nextAccessToken) return res
 
         return fetch(url, {
             ...options,
@@ -139,17 +134,10 @@ export default function ProfileSettings() {
     }, [navigate, refreshAccessToken])
 
     useEffect(() => {
-        const token = getStoredToken()
-        const storedUser = readStoredUser()
-
-        if (!token || !storedUser) {
+        if (!getStoredToken() || !user) {
             navigate('/login')
-            return
         }
-
-        setUser(storedUser)
-        setLoading(false)
-    }, [navigate])
+    }, [navigate, user])
 
     async function handlePasswordChange(event) {
         event.preventDefault()
@@ -192,7 +180,7 @@ export default function ProfileSettings() {
         }
     }
 
-    if (loading) {
+    if (!user) {
         return (
             <div className="min-h-screen bg-[#F9F6F0] flex items-center justify-center selection:bg-[#4E7A5E] selection:text-white">
                 <div className="w-8 h-8 border-2 border-[#4E7A5E] border-t-transparent rounded-full animate-spin" />

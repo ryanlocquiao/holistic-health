@@ -21,6 +21,7 @@ const mockState = {
         id: 1,
         email: 'user@example.com',
         password_hash: 'hashed-current-password',
+        medical_disclaimer_accepted_at: null,
         created_at: new Date('2026-01-01T00:00:00.000Z')
     }]
 };
@@ -32,10 +33,26 @@ function normalizeSql(sql) {
 async function mockHandleQuery(sql, params = []) {
     const normalizedSql = normalizeSql(sql);
 
-    if (normalizedSql.startsWith('SELECT id, email, created_at FROM users WHERE id = $1')) {
+    if (normalizedSql.startsWith('SELECT id, email, created_at, medical_disclaimer_accepted_at FROM users WHERE id = $1')) {
         const [id] = params;
         const user = mockState.users.find((u) => u.id === id);
         return { rows: user ? [user] : [] };
+    }
+
+    if (normalizedSql.startsWith('UPDATE users SET medical_disclaimer_accepted_at = NOW() WHERE id = $1 RETURNING id, email, created_at, medical_disclaimer_accepted_at')) {
+        const [id] = params;
+        const user = mockState.users.find((u) => u.id === id);
+        if (!user) return { rows: [] };
+
+        user.medical_disclaimer_accepted_at = new Date('2026-02-01T00:00:00.000Z');
+        return {
+            rows: [{
+                id: user.id,
+                email: user.email,
+                created_at: user.created_at,
+                medical_disclaimer_accepted_at: user.medical_disclaimer_accepted_at
+            }]
+        };
     }
 
     if (normalizedSql.startsWith('SELECT id, password_hash FROM users WHERE id = $1')) {
@@ -75,6 +92,7 @@ beforeEach(() => {
         id: 1,
         email: 'user@example.com',
         password_hash: 'hashed-current-password',
+        medical_disclaimer_accepted_at: null,
         created_at: new Date('2026-01-01T00:00:00.000Z')
     }];
     mockPool.query.mockClear();
@@ -90,7 +108,11 @@ describe('GET /api/users/me', () => {
         const res = await request(app).get('/api/users/me');
 
         expect(res.statusCode).toBe(200);
-        expect(res.body).toMatchObject({ id: 1, email: 'user@example.com' });
+        expect(res.body).toMatchObject({
+            id: 1,
+            email: 'user@example.com',
+            medical_disclaimer_accepted_at: null
+        });
     });
 
     test('returns 404 if the user id from the token no longer exists', async () => {
@@ -106,6 +128,32 @@ describe('GET /api/users/me', () => {
         const res = await request(app).get('/api/users/me');
 
         expect(res.headers['ratelimit-limit']).toBeDefined();
+    });
+});
+
+describe('PATCH /api/users/disclaimer', () => {
+    test('records the authenticated user disclaimer acknowledgement timestamp', async () => {
+        const app = createTestApp();
+        const res = await request(app).patch('/api/users/disclaimer');
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.message).toBe('Disclaimer acknowledgement recorded');
+        expect(res.body.user).toMatchObject({
+            id: 1,
+            email: 'user@example.com'
+        });
+        expect(res.body.user.medical_disclaimer_accepted_at).toBeDefined();
+        expect(mockState.users[0].medical_disclaimer_accepted_at).toEqual(new Date('2026-02-01T00:00:00.000Z'));
+    });
+
+    test('returns 404 if the disclaimer user no longer exists', async () => {
+        const app = createTestApp();
+        const res = await request(app)
+            .patch('/api/users/disclaimer')
+            .set('x-test-user-id', '999');
+
+        expect(res.statusCode).toBe(404);
+        expect(res.body).toEqual({ error: 'User not found' });
     });
 });
 

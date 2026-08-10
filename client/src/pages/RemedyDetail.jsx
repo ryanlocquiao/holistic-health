@@ -158,10 +158,7 @@ async function fetchWithAuthRetry(url, options = {}) {
     if (authError.code !== 'TOKEN_EXPIRED') return res
 
     const nextAccessToken = await refreshAccessToken()
-    if (!nextAccessToken) {
-        clearStoredAuth()
-        return res
-    }
+    if (!nextAccessToken) return res
 
     return fetch(url, {
         ...options,
@@ -336,83 +333,6 @@ export default function RemedyDetail() {
         }
     }
 
-    function ContraindicationSection() {
-        if (!token) {
-            return (
-                <div className="mt-8 rounded-[2rem] border border-[#E9E4D8] bg-[#F9F6F0] p-4 text-sm text-[#3E5C4A]">
-                    <p className="text-xs text-[#4E7A5E]">
-                        <button 
-                            type="button"
-                            onClick={() => navigate('/login')} 
-                            className="font-medium underline decoration-[#A3B899] underline-offset-4 hover:text-[#1A3326]"
-                        >
-                            Sign In
-                        </button>{' '}
-                        to check this remedy against your medications.
-                    </p>
-                </div>
-            )
-        }
-
-        if (conflictLoading) {
-            return (
-                <div className="mt-8 rounded-[2rem] border border-[#E9E4D8] bg-[#F9F6F0] p-4 text-sm text-[#4E7A5E]">
-                    Checking for interactions...
-                </div>
-            )
-        }
-
-        if (!userHasMeds) {
-            return (
-                <div className="mt-8 rounded-[2rem] border border-[#E9E4D8] bg-[#F9F6F0] p-4 text-sm text-[#3E5C4A]">
-                    <p className="text-xs text-[#4E7A5E]">
-                        No medications saved.{' '}
-                        <button
-                            type="button"
-                            onClick={() => navigate('/dashboard')}
-                            className="font-medium underline decoration-[#A3B899] underline-offset-4 hover:text-[#1A3326]"
-                        >
-                            Add them in your dashboard
-                        </button>{' '}
-                        to check for interactions.
-                    </p>
-                </div>
-            )
-        }
-
-        if (conflicts.length === 0) {
-            return (
-                <div className="mt-8 rounded-[2rem] border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-                 No known interactions with your current medications.
-                </div>
-            )
-        }
-
-        return (
-            <div className="mt-8 space-y-3">
-                {conflicts.map((conflict, i) => {
-                    const config = SEVERITY_CONFIG[conflict.severity] || SEVERITY_CONFIG[1]
-                    return (
-                        <div
-                            key={i}
-                            className={`flex gap-3 rounded-[2rem] border-l-4 p-5 ${config.bg} ${config.border}`}
-                        >
-                            <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${config.text}`} />
-                            <div>
-                                <p className={`text-sm font-semibold ${config.text}`}>
-                                    {config.label} Interaction
-                                </p>
-                                <p className={`mt-1 text-sm ${config.text}`}>
-                                    {conflict.description || 'Consult your provider before combining these.'}
-                                </p>
-                            </div>
-                        </div>
-                    )
-                })}
-            </div>
-        )
-    }
-
     if (loading) {
         return (
             <div className="min-h-screen bg-[#F9F6F0] font-sans text-[#2C4C3B]">
@@ -582,11 +502,109 @@ export default function RemedyDetail() {
                             </aside>
                         </div>
 
-                            <ContraindicationSection />
+                            <ContraindicationSection
+                                conflicts={conflicts}
+                                conflictLoading={conflictLoading}
+                                hasToken={Boolean(token)}
+                                onDashboard={() => navigate('/dashboard')}
+                                onLogin={() => navigate('/login')}
+                                userHasMeds={userHasMeds}
+                            />
                         </div>
                     </div>
                 </div>
             </main>
+        </div>
+    )
+}
+
+/**
+ * Medication interaction panel for a single remedy.
+ *
+ * Kept outside `RemedyDetail` so React does not recreate the component on each
+ * render. Manual test: open a remedy logged out, logged in with no medications,
+ * and logged in with saved medications to confirm each state still appears.
+ */
+function ContraindicationSection({
+    conflicts,
+    conflictLoading,
+    hasToken,
+    onDashboard,
+    onLogin,
+    userHasMeds
+}) {
+    if (!hasToken) {
+        return (
+            <div className="mt-8 rounded-[2rem] border border-[#E9E4D8] bg-[#F9F6F0] p-4 text-sm text-[#3E5C4A]">
+                <p className="text-xs text-[#4E7A5E]">
+                    <button
+                        type="button"
+                        onClick={onLogin}
+                        className="font-medium underline decoration-[#A3B899] underline-offset-4 hover:text-[#1A3326]"
+                    >
+                        Sign In
+                    </button>{' '}
+                    to check this remedy against your medications.
+                </p>
+            </div>
+        )
+    }
+
+    if (conflictLoading) {
+        return (
+            <div className="mt-8 rounded-[2rem] border border-[#E9E4D8] bg-[#F9F6F0] p-4 text-sm text-[#4E7A5E]">
+                Checking for interactions...
+            </div>
+        )
+    }
+
+    if (!userHasMeds) {
+        return (
+            <div className="mt-8 rounded-[2rem] border border-[#E9E4D8] bg-[#F9F6F0] p-4 text-sm text-[#3E5C4A]">
+                <p className="text-xs text-[#4E7A5E]">
+                    No medications saved.{' '}
+                    <button
+                        type="button"
+                        onClick={onDashboard}
+                        className="font-medium underline decoration-[#A3B899] underline-offset-4 hover:text-[#1A3326]"
+                    >
+                        Add them in your dashboard
+                    </button>{' '}
+                    to check for interactions.
+                </p>
+            </div>
+        )
+    }
+
+    if (conflicts.length === 0) {
+        return (
+            <div className="mt-8 rounded-[2rem] border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+                No known interactions with your current medications.
+            </div>
+        )
+    }
+
+    return (
+        <div className="mt-8 space-y-3">
+            {conflicts.map((conflict, index) => {
+                const config = SEVERITY_CONFIG[conflict.severity] || SEVERITY_CONFIG[1]
+                return (
+                    <div
+                        key={`${conflict.description || 'interaction'}-${index}`}
+                        className={`flex gap-3 rounded-[2rem] border-l-4 p-5 ${config.bg} ${config.border}`}
+                    >
+                        <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${config.text}`} />
+                        <div>
+                            <p className={`text-sm font-semibold ${config.text}`}>
+                                {config.label} Interaction
+                            </p>
+                            <p className={`mt-1 text-sm ${config.text}`}>
+                                {conflict.description || 'Consult your provider before combining these.'}
+                            </p>
+                        </div>
+                    </div>
+                )
+            })}
         </div>
     )
 }

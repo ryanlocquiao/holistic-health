@@ -27,8 +27,12 @@ CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    medical_disclaimer_accepted_at TIMESTAMPTZ,
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS medical_disclaimer_accepted_at TIMESTAMPTZ;
 
 -- Refresh Tokens:
 -- Tokens are stored as HMAC-SHA-256 hashes instead of plaintext. HMAC keeps

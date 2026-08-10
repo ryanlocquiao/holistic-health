@@ -1,8 +1,9 @@
 import { AlertTriangle, ArrowRight, Heart, Leaf, Search } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Nav from '../components/Nav.jsx'
 
+const API_URL = import.meta.env.VITE_API_URL
 const ANONYMOUS_DISCLAIMER_STORAGE_KEY = 'holisticHealthAnonymousDisclaimerAcceptedAt'
 const AUTHENTICATED_DISCLAIMER_STORAGE_PREFIX = 'holisticHealthDisclaimerAccepted'
 const DISCLAIMER_INTERVAL_MS = 24 * 60 * 60 * 1000
@@ -28,11 +29,49 @@ function shouldShowDisclaimer(now = Date.now()) {
     const user = readStoredUser()
 
     if (token && user) {
+        if (user.medical_disclaimer_accepted_at) return false
         return localStorage.getItem(getAuthenticatedDisclaimerKey(user)) !== 'true'
     }
 
     const acceptedAt = Number(localStorage.getItem(ANONYMOUS_DISCLAIMER_STORAGE_KEY) || 0)
     return !acceptedAt || now - acceptedAt >= DISCLAIMER_INTERVAL_MS
+}
+
+async function fetchAuthenticatedProfile(token) {
+    if (!API_URL || !token) return null
+
+    try {
+        const res = await fetch(`${API_URL}/api/users/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+
+        if (!res.ok) return null
+
+        return await res.json()
+    } catch {
+        return null
+    }
+}
+
+async function captureAuthenticatedDisclaimer(token) {
+    if (!API_URL || !token) return
+
+    try {
+        const res = await fetch(`${API_URL}/api/users/disclaimer`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}` }
+        })
+
+        if (!res.ok) return
+
+        const data = await res.json()
+        if (data.user) {
+            localStorage.setItem('user', JSON.stringify(data.user))
+            localStorage.setItem(getAuthenticatedDisclaimerKey(data.user), 'true')
+        }
+    } catch {
+        // Local acknowledgement still prevents the modal from blocking users.
+    }
 }
 
 /**
@@ -59,6 +98,32 @@ export default function Landing() {
     const [showDisclaimer, setShowDisclaimer] = useState(() => shouldShowDisclaimer())
     const navigate = useNavigate()
 
+    useEffect(() => {
+        const token = localStorage.getItem('token')
+        const user = readStoredUser()
+
+        if (!showDisclaimer || !token || !user) return undefined
+
+        let isActive = true
+
+        async function syncDisclaimerStatus() {
+            const profile = await fetchAuthenticatedProfile(token)
+
+            if (!isActive || !profile?.medical_disclaimer_accepted_at) return
+
+            const nextUser = { ...user, ...profile }
+            localStorage.setItem('user', JSON.stringify(nextUser))
+            localStorage.setItem(getAuthenticatedDisclaimerKey(nextUser), 'true')
+            setShowDisclaimer(false)
+        }
+
+        syncDisclaimerStatus()
+
+        return () => {
+            isActive = false
+        }
+    }, [showDisclaimer])
+
     function normalizeQuery(value) {
         return value.trim()
     }
@@ -69,6 +134,7 @@ export default function Landing() {
 
         if (token && user) {
             localStorage.setItem(getAuthenticatedDisclaimerKey(user), 'true')
+            captureAuthenticatedDisclaimer(token)
         } else {
             localStorage.setItem(ANONYMOUS_DISCLAIMER_STORAGE_KEY, String(Date.now()))
         }
@@ -165,7 +231,8 @@ export default function Landing() {
  * - Clear `holisticHealthAnonymousDisclaimerAcceptedAt`, log out, and open `/`.
  * - Click "I understand", reload, and confirm it stays dismissed.
  * - Set the stored timestamp to more than 24 hours ago and confirm it returns.
- * - Log in and confirm the per-user key stays permanently accepted.
+ * - Log in and confirm an accepted server timestamp keeps the modal dismissed.
+ * - Confirm PATCH /api/users/disclaimer records the account timestamp.
  */
 function DisclaimerModal({ isOpen, onAccept }) {
     if (!isOpen) return null

@@ -22,7 +22,7 @@ function sendValidationErrors(req, res) {
 /**
  * GET /api/users/me
  *
- * Returns the authenticated user's public profile (id, email, created_at).
+ * Returns the authenticated user's public profile and disclaimer status.
  *
  * Run/test:
  * - cd server
@@ -31,7 +31,7 @@ function sendValidationErrors(req, res) {
 router.get('/me', requireAuth, authenticatedLimiter, async (req, res) => {
     try {
         const result = await pool.query(
-            `SELECT id, email, created_at FROM users WHERE id = $1`,
+            `SELECT id, email, created_at, medical_disclaimer_accepted_at FROM users WHERE id = $1`,
             [req.user.userId]
         );
 
@@ -43,6 +43,43 @@ router.get('/me', requireAuth, authenticatedLimiter, async (req, res) => {
     } catch (err) {
         console.error('Get user error', err);
         res.status(500).json({ error: 'Failed to fetch user' });
+    }
+});
+
+/**
+ * PATCH /api/users/disclaimer
+ *
+ * Captures the medical disclaimer acknowledgement for the authenticated user.
+ * The landing page also stores a local fallback so users are not blocked if
+ * the API is temporarily slow, but this server-side timestamp gives the app a
+ * durable record tied to the account.
+ *
+ * Run/test:
+ * - cd server
+ * - npm test -- --runTestsByPath tests/integration/users.test.js
+ * - Or PATCH this route with a Bearer access token after accepting the modal.
+ */
+router.patch('/disclaimer', requireAuth, authenticatedLimiter, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `UPDATE users
+             SET medical_disclaimer_accepted_at = NOW()
+             WHERE id = $1
+             RETURNING id, email, created_at, medical_disclaimer_accepted_at`,
+            [req.user.userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        return res.json({
+            message: 'Disclaimer acknowledgement recorded',
+            user: result.rows[0]
+        });
+    } catch (err) {
+        console.error('Disclaimer acknowledgement error:', err.message);
+        return res.status(500).json({ error: 'Failed to record disclaimer acknowledgement' });
     }
 });
 

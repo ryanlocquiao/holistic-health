@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useReducer, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { ArrowRight, Leaf, Search } from 'lucide-react'
 import Nav from '../components/Nav.jsx'
@@ -56,21 +56,58 @@ function getSortLabel(sortOption) {
     return 'Relevance'
 }
 
+function createInitialSearchState(query) {
+    return {
+        activeQuery: query,
+        error: null,
+        loading: Boolean(query),
+        results: [],
+        sortBy: 'relevance'
+    }
+}
+
+function searchReducer(state, action) {
+    switch (action.type) {
+        case 'start':
+            return createInitialSearchState(action.query)
+        case 'success':
+            if (state.activeQuery !== action.query) return state
+            return {
+                ...state,
+                loading: false,
+                results: action.results
+            }
+        case 'failure':
+            if (state.activeQuery !== action.query) return state
+            return {
+                ...state,
+                error: DEFAULT_ERROR_MESSAGE,
+                loading: false
+            }
+        case 'sort':
+            return {
+                ...state,
+                sortBy: action.sortBy
+            }
+        default:
+            return state
+    }
+}
+
 export default function SearchResults() {
     const [searchParams] = useSearchParams()
-    const [results, setResults] = useState([])
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState(null)
     const navigate = useNavigate()
     const query = (searchParams.get('q') || '').trim()
-    const [searchInput, setSearchInput] = useState(query)
+    const [searchState, dispatchSearch] = useReducer(searchReducer, query, createInitialSearchState)
+    const { error, loading, results, sortBy } = searchState
+    const [searchDraft, setSearchDraft] = useState(() => ({ query, value: query }))
+    const searchInput = searchDraft.query === query ? searchDraft.value : query
 
-    const [sortBy, setSortBy] = useState('relevance')
-    const sortedResults = [...results].sort((a, b) => {
+    const sortedResults = useMemo(() => [...results].sort((a, b) => {
         if (sortBy === 'tier') return a.evidence_tier - b.evidence_tier
         if (sortBy === 'alpha') return a.name.localeCompare(b.name)
         return (b.score || 0) - (a.score || 0)
-    })
+    }), [results, sortBy])
 
     function normalizeSearch(value) {
         return value.trim()
@@ -88,21 +125,15 @@ export default function SearchResults() {
         navigate(`/search?q=${encodeURIComponent(normalizedQuery)}`)
     }
 
-    useEffect(() => {
-        setSearchInput(query)
-    }, [query])
+    function handleSearchInputChange(event) {
+        setSearchDraft({ query, value: event.target.value })
+    }
 
     useEffect(() => {
-        setError(null)
-        setSortBy('relevance')
-
-        if (!query) {
-            setResults([])
-            setLoading(false)
-            return
-        }
-
         const abortController = new AbortController()
+
+        dispatchSearch({ type: 'start', query })
+        if (!query) return () => abortController.abort()
 
         async function runSearch() {
             try {
@@ -116,18 +147,17 @@ export default function SearchResults() {
                 }
 
                 const data = await res.json()
-                setResults(Array.isArray(data) ? data : [])
+                dispatchSearch({
+                    type: 'success',
+                    query,
+                    results: Array.isArray(data) ? data : []
+                })
             } catch (err) {
                 if (err.name === 'AbortError') return
-                setError(DEFAULT_ERROR_MESSAGE)
-            } finally {
-                if (!abortController.signal.aborted) {
-                    setLoading(false)
-                }
+                dispatchSearch({ type: 'failure', query })
             }
         }
 
-        setLoading(true)
         runSearch()
 
         return () => {
@@ -169,7 +199,7 @@ export default function SearchResults() {
                                 <input
                                     type="text"
                                     value={searchInput}
-                                    onChange={(event) => setSearchInput(event.target.value)}
+                                    onChange={handleSearchInputChange}
                                     placeholder="Search by symptom, herb, or compound..."
                                     aria-label="Run another search"
                                     className="min-w-0 flex-1 border-none bg-transparent py-2.5 text-base text-[#1A3326] outline-none placeholder:text-[#A3B899]"
@@ -187,7 +217,7 @@ export default function SearchResults() {
                                     <button
                                         key={option}
                                         type="button"
-                                        onClick={() => setSortBy(option)}
+                                        onClick={() => dispatchSearch({ type: 'sort', sortBy: option })}
                                         aria-pressed={sortBy === option}
                                         className={`rounded-full border px-4 py-2 text-xs font-medium uppercase tracking-wide transition ${sortBy === option ? 'border-[#4E7A5E] bg-[#4E7A5E] text-[#F9F6F0]' : 'border-[#E9E4D8] bg-[#F9F6F0] text-[#3E5C4A] hover:border-[#A3B899]'}`}
                                     >

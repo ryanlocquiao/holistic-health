@@ -46,3 +46,20 @@ body::-webkit-scrollbar {
   width: 0;
   height: 0;
 }
+
+/*
+  Utility: visually hides scrollbars while preserving scrolling.
+
+  Use this on compact overflow regions, such as the chatbot recommendation
+  list, where the container should still scroll with a wheel, trackpad, or
+  touch gesture but the scrollbar should not be visible.
+*/
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
