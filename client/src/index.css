@@ -63,3 +63,84 @@ body::-webkit-scrollbar {
   width: 0;
   height: 0;
 }
+
+/*
+  Search loading animation.
+
+  The mortar and pestle are CSS-only so the results page can show a polished
+  loading state without adding image assets. The media query keeps the same
+  visual cue while respecting users who prefer reduced motion.
+*/
+.mortar-loader {
+  position: relative;
+  width: 4.75rem;
+  height: 3.75rem;
+}
+
+.mortar-loader__bowl {
+  position: absolute;
+  z-index: 2;
+  bottom: 0.1rem;
+  left: 50%;
+  width: 3.9rem;
+  height: 2rem;
+  transform: translateX(-50%);
+  border: 0.14rem solid #4E7A5E;
+  border-top: 0;
+  border-radius: 0.3rem 0.3rem 2rem 2rem;
+  background: #4E7A5E;
+}
+
+.mortar-loader__bowl::before {
+  content: '';
+  position: absolute;
+  top: -0.28rem;
+  left: 50%;
+  width: 4.25rem;
+  height: 0.48rem;
+  transform: translateX(-50%);
+  border: 0.12rem solid #4E7A5E;
+  border-radius: 999px;
+  background: #4E7A5E;
+}
+
+.mortar-loader__pestle {
+  position: absolute;
+  z-index: 1;
+  top: 0.25rem;
+  left: 50%;
+  width: 0.42rem;
+  height: 2.8rem;
+  transform-origin: 50% 78%;
+  border-radius: 999px;
+  background: #1A3326;
+  animation: mortar-grind 1.35s ease-in-out infinite;
+}
+
+@keyframes mortar-grind {
+  0% {
+    transform: translateX(-0.78rem) translateY(0.05rem) rotate(-32deg);
+  }
+
+  25% {
+    transform: translateX(-0.32rem) translateY(0.28rem) rotate(-25deg);
+  }
+
+  50% {
+    transform: translateX(0.32rem) translateY(0.28rem) rotate(-18deg);
+  }
+
+  75% {
+    transform: translateX(0.78rem) translateY(0.05rem) rotate(-25deg);
+  }
+
+  100% {
+    transform: translateX(-0.78rem) translateY(0.05rem) rotate(-32deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mortar-loader__pestle {
+    animation: none;
+  }
+}

@@ -235,6 +235,8 @@ export default function SearchResults() {
                             </div>
                         )}
 
+                        {loading && query && !error && <SearchLoadingAnimation />}
+
                         {!loading && query && results.length === 0 && !error && (
                             <div className="mx-auto mt-8 max-w-2xl rounded-3xl border border-[#E9E4D8] bg-[#F9F6F0] px-5 py-4 text-sm text-[#3E5C4A]">
                                 No results found for "{query}". Some symptoms may need care beyond natural herbs or remedies; consider checking with your doctor.
@@ -283,6 +285,27 @@ export default function SearchResults() {
                     </section>
                 </div>
             </main>
+        </div>
+    )
+}
+
+/**
+ * Lightweight search loader shown while the API ranks remedy results.
+ *
+ * The mortar and pestle are built with CSS so the loading state stays fast,
+ * themeable, and independent of image assets.
+ */
+function SearchLoadingAnimation() {
+    return (
+        <div className="mx-auto mt-10 flex max-w-md flex-col items-center rounded-[2rem] border border-[#E9E4D8] bg-[#F9F6F0] px-6 py-8 text-center shadow-sm" role="status" aria-live="polite">
+            <div className="mortar-loader" aria-hidden="true">
+                <div className="mortar-loader__pestle" />
+                <div className="mortar-loader__bowl" />
+            </div>
+            <p className="mt-5 font-serif text-2xl font-medium text-[#1A3326]">Loading...</p>
+            <p className="mt-2 text-sm leading-relaxed text-[#3E5C4A]">
+                Grinding fresh recommendations for your search.
+            </p>
         </div>
     )
 }
