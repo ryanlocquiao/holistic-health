@@ -35,27 +35,6 @@ const TIER_DESC = {
     3: 'Anecdotal / community data'
 }
 
-const TIER_INFO = [
-    {
-        tier: 1,
-        label: 'Tier 1',
-        description: 'Peer-reviewed research or stronger clinical/scientific evidence.',
-        color: TIER_COLOR[1]
-    },
-    {
-        tier: 2,
-        label: 'Tier 2',
-        description: 'Institutional, traditional, or moderate supporting evidence.',
-        color: TIER_COLOR[2]
-    },
-    {
-        tier: 3,
-        label: 'Tier 3',
-        description: 'Anecdotal, community, or limited early evidence.',
-        color: TIER_COLOR[3]
-    }
-]
-
 const SEVERITY_CONFIG = {
     3: { 
         label: 'High Risk',
@@ -479,7 +458,6 @@ export default function RemedyDetail() {
                                     <p className="text-[#3E5C4A]">
                                         {TIER_DESC[evidenceTier]}
                                     </p>
-                                    <EvidenceTierLegend />
                                 </section>
 
                                 <section className="rounded-[2rem] border border-[#E9E4D8] bg-white p-6 shadow-sm">
@@ -605,36 +583,6 @@ function ContraindicationSection({
                     </div>
                 )
             })}
-        </div>
-    )
-}
-
-/**
- * Sidebar key for all evidence tiers.
- *
- * Manual test:
- * - Open any `/remedy/:id` page.
- * - Confirm the active evidence tier still appears at the top and the sidebar
- *   explains all three tier meanings.
- */
-function EvidenceTierLegend() {
-    return (
-        <div className="mt-5 border-t border-[#E9E4D8] pt-4" aria-label="Evidence tier key">
-            <h3 className="text-xs font-medium uppercase tracking-wide text-[#4E7A5E]">
-                Tier key
-            </h3>
-            <div className="mt-3 space-y-3">
-                {TIER_INFO.map((tier) => (
-                    <div key={tier.tier}>
-                        <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-medium ${tier.color}`}>
-                            {tier.label}
-                        </span>
-                        <p className="mt-1 text-xs leading-relaxed text-[#3E5C4A]">
-                            {tier.description}
-                        </p>
-                    </div>
-                ))}
-            </div>
         </div>
     )
 }
