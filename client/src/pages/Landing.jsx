@@ -206,8 +206,8 @@ export default function Landing() {
 
                     <div className="relative mx-auto mt-8 max-w-5xl">
                         <img
-                            src="https://images.unsplash.com/photo-1556228578-0d85b1a4d571?q=80&w=1600&auto=format&fit=crop"
-                            alt="Holistic lifestyle"
+                            src="/holistic_health_landing.jpg"
+                            alt="Amber dropper bottle with natural botanicals"
                             className="h-[500px] w-full rounded-[3rem] object-cover shadow-xl"
                         />
                         <CommunityBadge className="-right-6 -top-6 hidden md:block md:-right-12" />
